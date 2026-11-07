@@ -1,0 +1,230 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height-mobile) + var(--space-2));
+  background: var(--color-cream);
+}
+
+body {
+  min-width: 20rem;
+  margin: var(--space-0);
+  color: var(--color-text);
+  background: var(--color-cream);
+  font-family: 'Nunito', sans-serif;
+  font-size: 1rem;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--color-teal-dark);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--color-ink);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 0.2rem solid var(--color-focus);
+  outline-offset: var(--space-1);
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin-block-start: var(--space-0);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-ink);
+  font-family: 'Poppins', sans-serif;
+  line-height: 1.16;
+}
+
+h1 {
+  max-width: 15ch;
+  margin-block-end: var(--space-6);
+  font-size: clamp(2.5rem, 7vw, 5.25rem);
+  letter-spacing: -0.055em;
+}
+
+h2 {
+  margin-block-end: var(--space-4);
+  font-size: clamp(1.75rem, 3.2vw, 2.75rem);
+  letter-spacing: -0.04em;
+}
+
+h3 {
+  margin-block-end: var(--space-3);
+  font-size: 1.2rem;
+}
+
+p {
+  color: var(--color-muted);
+}
+
+::selection {
+  color: var(--color-ink);
+  background: var(--color-orange-soft);
+}
+
+.container {
+  width: min(calc(100% - var(--space-4) - var(--space-4)), var(--content-width));
+  margin-inline: auto;
+}
+
+.section-space {
+  padding-block: var(--space-section);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+  color: var(--color-teal-dark);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.eyebrow span {
+  color: var(--color-orange);
+  font-size: 1rem;
+}
+
+.button {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border: 0.125rem solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.button:hover {
+  transform: translateY(-0.125rem);
+}
+
+.button--primary {
+  color: var(--color-inverse-text);
+  background: var(--color-teal-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.button--primary:hover {
+  color: var(--color-inverse-text);
+  background: var(--color-accent-surface-hover);
+}
+
+.button--outline {
+  color: var(--color-ink);
+  border-color: var(--color-border);
+  background: var(--color-white-glass);
+}
+
+.button--outline:hover {
+  border-color: var(--color-teal-strong);
+  background: var(--color-surface);
+}
+
+.button--light {
+  color: var(--color-ink);
+  background: var(--color-cream);
+}
+
+.button--light:hover {
+  color: var(--color-ink);
+  background: var(--color-orange-soft);
+}
+
+.button--small {
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-5);
+  font-size: 0.9rem;
+}
+
+.text-link,
+.footer-text-link {
+  color: var(--color-teal-dark);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.text-link span,
+.footer-text-link span {
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+  transition: transform var(--transition-fast);
+}
+
+.text-link:hover span,
+.footer-text-link:hover span {
+  transform: translateX(var(--space-1));
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 0.0625rem;
+  height: 0.0625rem;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

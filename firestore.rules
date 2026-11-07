@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Student-project example: validate public form creates and keep personal records unreadable.
+    // Add App Check and a trusted backend or authentication before public production use.
+    function hasFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function shortString(field, maxLength) {
+      return request.resource.data[field] is string
+        && request.resource.data[field].size() > 0
+        && request.resource.data[field].size() <= maxLength;
+    }
+
+    match /pets/{petId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /members/{memberId} {
+      allow create: if hasFields(['memberId', 'fullName', 'email', 'phone', 'createdAt'])
+        && shortString('memberId', 32)
+        && shortString('fullName', 120)
+        && shortString('email', 254)
+        && shortString('phone', 32)
+        && !request.resource.data.keys().hasAny(['password', 'confirmPassword']);
+      allow read, update, delete: if false;
+    }
+
+    match /adoption_requests/{requestId} {
+      allow create: if hasFields(['referenceId', 'memberId', 'email', 'petId', 'reason', 'createdAt'])
+        && shortString('referenceId', 40)
+        && shortString('memberId', 32)
+        && shortString('email', 254)
+        && shortString('petId', 64)
+        && shortString('reason', 1200);
+      allow read, update, delete: if false;
+    }
+
+    match /release_requests/{requestId} {
+      allow create: if hasFields(['referenceId', 'ownerName', 'email', 'phone', 'petName', 'reason', 'createdAt'])
+        && shortString('referenceId', 40)
+        && shortString('ownerName', 120)
+        && shortString('email', 254)
+        && shortString('phone', 32)
+        && shortString('petName', 100)
+        && shortString('reason', 1200);
+      allow read, update, delete: if false;
+    }
+
+    match /contact_messages/{messageId} {
+      allow create: if hasFields(['referenceId', 'name', 'email', 'message', 'createdAt'])
+        && shortString('referenceId', 40)
+        && shortString('name', 120)
+        && shortString('email', 254)
+        && shortString('message', 2000);
+      allow read, update, delete: if false;
+    }
+  }
+}

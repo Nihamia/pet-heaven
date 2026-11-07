@@ -1,0 +1,181 @@
+/* Add a clear keyboard-accessible theme control to the shared navigation. */
+.nav-theme-item {
+  padding: var(--space-2) var(--space-4);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.2;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-teal-strong);
+  background: var(--color-surface-soft);
+  transform: translateY(-0.0625rem);
+}
+
+.theme-toggle__icon {
+  color: var(--color-orange);
+  font-size: 1.1rem;
+}
+
+.theme-toggle__state {
+  margin-inline-start: auto;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
+.not-found-page {
+  position: relative;
+  display: grid;
+  min-height: min(42rem, calc(100svh - var(--header-height-mobile)));
+  align-items: center;
+  overflow: hidden;
+  padding-block: var(--space-section);
+  background:
+    radial-gradient(ellipse at 88% 18%, var(--color-orange-glow-soft), transparent 23rem),
+    linear-gradient(120deg, var(--color-cream), var(--color-surface-soft));
+}
+
+.not-found-page__layout {
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.not-found-card {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+  border-color: var(--color-border-glass);
+  background: var(--color-white-glass);
+}
+
+.not-found-card__number {
+  display: inline-block;
+  margin-block-end: var(--space-4);
+  color: var(--color-teal-dark);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.not-found-card .section-heading {
+  margin-block-end: var(--space-6);
+}
+
+.not-found-card h1 {
+  max-width: 12ch;
+}
+
+.not-found-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.not-found-art {
+  position: absolute;
+  right: 4%;
+  bottom: 3%;
+  display: grid;
+  width: clamp(11rem, 28vw, 22rem);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0.0625rem dashed var(--color-teal-ring);
+  border-radius: 50%;
+  color: var(--color-teal-paw);
+  transform: rotate(-12deg);
+}
+
+.not-found-art__paw {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(8rem, 20vw, 16rem);
+  line-height: 1;
+}
+
+.not-found-art__trail {
+  position: absolute;
+  top: 17%;
+  left: -18%;
+  color: var(--color-orange);
+  font-size: 3rem;
+  letter-spacing: 0.2em;
+}
+
+@media (min-width: 37.5rem) {
+  .not-found-page__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.7fr);
+  }
+
+  .not-found-art {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    justify-self: center;
+  }
+}
+
+@media (min-width: 75rem) {
+  .nav-theme-item {
+    padding: var(--space-0);
+    margin-inline-start: var(--space-2);
+  }
+
+  .theme-toggle {
+    width: auto;
+    justify-content: center;
+    padding-inline: var(--space-3);
+  }
+
+  .not-found-page {
+    min-height: min(48rem, calc(100svh - var(--header-height-desktop)));
+  }
+}
+
+@media (max-width: 37.49rem) {
+  .not-found-page__layout {
+    gap: var(--space-6);
+  }
+
+  .not-found-card {
+    padding: var(--space-6);
+  }
+
+  .not-found-card__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .not-found-card__actions .button {
+    width: 100%;
+  }
+
+  .not-found-art {
+    width: 9rem;
+    justify-self: end;
+    margin-inline-end: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle:hover {
+    transform: none;
+  }
+}
