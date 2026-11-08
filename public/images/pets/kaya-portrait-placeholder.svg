@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+<title id="title">Portrait placeholder illustration for Kaya, a brown and cream dog</title><desc id="desc">Clearly labelled original photo placeholder for Pet Heaven coursework. Replace with a licensed photograph and update the image catalogue.</desc>
+<defs><linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F2F8F6"/><stop offset="1" stop-color="#FFF8F0"/></linearGradient><pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0H0V56" fill="none" stroke="#2A9D8F" stroke-opacity=".08"/></pattern></defs>
+<rect width="1200" height="900" fill="url(#base)"/><rect width="1200" height="900" fill="url(#grid)"/>
+<circle cx="1044.0" cy="135.0" r="522.0" fill="#2A9D8F" opacity=".12"/><circle cx="983.9999999999999" cy="495.00000000000006" r="252.00000000000003" fill="#F4A261" opacity=".28"/>
+<path d="M0 729.0Q360.0 531.0 756.0 765.0T1200 720.0V900H0Z" fill="#2A9D8F" opacity=".09"/>
+<g transform="translate(683.9999999999999 414.0) scale(1.56)"><g fill="#264653"><ellipse cx="15" cy="75" rx="100" ry="65"/><path d="M-65 100v95h33l18-85M55 100v95h33l-3-95M-75 48q-90-65-85-6q20 25 64 41"/><ellipse cx="55" cy="-7" rx="64" ry="66"/><path d="M8-44q-53-30-49 44q8 37 45 5M102-47q51-27 45 47q-7 34-41 7"/><ellipse cx="97" cy="18" rx="44" ry="30"/></g><circle cx="72" cy="-20" r="6" fill="#fff8f0"/><ellipse cx="130" cy="10" rx="11" ry="8" fill="#f4a261"/></g>
+<rect x="66.0" y="54.0" width="384.0" height="58.5" rx="29.25" fill="#264653"/>
+<text x="258.0" y="93.195" fill="#FFF8F0" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-size="24.57" font-weight="700" letter-spacing="1.5">PHOTO PLACEHOLDER</text>
+<text x="66.0" y="747.0" fill="#264653" font-family="Poppins,Arial,sans-serif" font-size="52.8" font-weight="700">Kaya — portrait</text>
+<text x="66.0" y="814.5" fill="#264653" opacity=".8" font-family="Nunito,Arial,sans-serif" font-size="26.4">Replace with a licensed photo · Pet Heaven coursework</text>
+</svg>

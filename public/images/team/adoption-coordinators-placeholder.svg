@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+<title id="title">Original placeholder illustration for the adoption coordinators</title><desc id="desc">Clearly labelled original photo placeholder for Pet Heaven coursework. Replace with a licensed photograph and update the image catalogue.</desc>
+<defs><linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F2F8F6"/><stop offset="1" stop-color="#FFF8F0"/></linearGradient><pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0H0V56" fill="none" stroke="#2A9D8F" stroke-opacity=".08"/></pattern></defs>
+<rect width="800" height="800" fill="url(#base)"/><rect width="800" height="800" fill="url(#grid)"/>
+<circle cx="696.0" cy="120.0" r="463.99999999999994" fill="#2A9D8F" opacity=".12"/><circle cx="656.0" cy="440.00000000000006" r="224.00000000000003" fill="#F4A261" opacity=".28"/>
+<path d="M0 648.0Q240.0 472.0 504.0 680.0T800 640.0V800H0Z" fill="#2A9D8F" opacity=".09"/>
+<g transform="translate(455.99999999999994 368.0) scale(1.04)"><g fill="#264653"><circle cy="-63" r="45"/><path d="M-85 190v-90q0-94 85-94t85 94v90z"/><path d="M-72 63q-96 37-48 105l35-4M72 63q96 37 48 105l-35-4" fill="none" stroke="#264653" stroke-width="28" stroke-linecap="round"/></g><path d="M0 104q-49-46-46-7q0 28 46 57q46-29 46-57q3-39-46 7" fill="#f4a261"/></g>
+<rect x="44.0" y="48.0" width="256.0" height="52.0" rx="26.0" fill="#264653"/>
+<text x="172.0" y="82.84" fill="#FFF8F0" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-size="21.84" font-weight="700" letter-spacing="1.5">PHOTO PLACEHOLDER</text>
+<text x="44.0" y="664.0" fill="#264653" font-family="Poppins,Arial,sans-serif" font-size="35.199999999999996" font-weight="700">Adoption coordinators</text>
+<text x="44.0" y="724.0" fill="#264653" opacity=".8" font-family="Nunito,Arial,sans-serif" font-size="17.599999999999998">Replace with a licensed photo · Pet Heaven coursework</text>
+</svg>

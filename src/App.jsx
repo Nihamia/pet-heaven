@@ -10,6 +10,9 @@ import JoinPage from './pages/JoinPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import PetsPage from './pages/PetsPage.jsx';
 import ReleasePage from './pages/ReleasePage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
+import TermsPage from './pages/TermsPage.jsx';
+import CreditsPage from './pages/CreditsPage.jsx';
 
 const routeTitles = {
   '/': 'Home',
@@ -19,6 +22,9 @@ const routeTitles = {
   '/adopt': 'Adoption enquiry',
   '/release': 'Rehome a pet',
   '/contact': 'Contact',
+  '/privacy': 'Privacy',
+  '/terms': 'Terms',
+  '/credits': 'Image credits',
 };
 
 // Keep the browser tab title in step with the page currently shown.
@@ -50,6 +56,9 @@ export default function App() {
           <Route path="/adopt" element={<AdoptPage />} />
           <Route path="/release" element={<ReleasePage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/credits" element={<CreditsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

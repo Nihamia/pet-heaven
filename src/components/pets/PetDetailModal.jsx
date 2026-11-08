@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import Badge from '../ui/Badge.jsx';
 import Button from '../ui/Button.jsx';
 import Modal from '../ui/Modal.jsx';
+import FallbackImage from '../ui/FallbackImage.jsx';
 import FavouriteButton from './FavouriteButton.jsx';
 import { formatPetAge } from '../../utils/petUtils.js';
+import { imageCredits } from '../../data/images.js';
 
 // Show a selected pet's full story, gallery, care notes, and adoption enquiry action.
 export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, onClose }) {
@@ -15,6 +17,7 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
   }, [pet?.id, pet?.image]);
 
   if (!pet) return null;
+  const activeAsset = imageCredits.find((image) => image.path === (activeImage || pet.image));
 
   const factRows = [
     ['Species', pet.species],
@@ -23,6 +26,7 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
     ['Gender', pet.gender],
     ['Size', pet.size],
     ['Colour', pet.colour],
+    ['HDB-friendly', typeof pet.hdbFriendly === 'boolean' ? (pet.hdbFriendly ? 'Yes' : 'No') : 'Not assessed'],
   ];
 
   return (
@@ -30,10 +34,13 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
       <div className="pet-detail">
         <div className="pet-detail__gallery">
           <div className="pet-detail__main-image-wrap">
-            <img
-              alt={`${pet.name}, a ${pet.gender.toLowerCase()} ${pet.species.toLowerCase()}`}
+            <FallbackImage
+              alt={activeAsset?.alt ?? `${pet.name}, a ${pet.gender.toLowerCase()} ${pet.species.toLowerCase()}`}
               className="pet-detail__main-image"
               src={activeImage || pet.image}
+              style={{ objectPosition: activeAsset?.objectPosition }}
+              height={activeAsset?.height ?? 720}
+              width={activeAsset?.width ?? 960}
             />
             <FavouriteButton
               isFavourite={isFavourite}
@@ -42,18 +49,21 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
             />
           </div>
           <div aria-label={`${pet.name} photo gallery`} className="pet-detail__thumbnails">
-            {gallery.map((image, index) => (
-              <button
-                aria-label={`Show ${pet.name} photo ${index + 1}`}
-                aria-pressed={activeImage === image}
-                className={`pet-detail__thumbnail${activeImage === image ? ' pet-detail__thumbnail--active' : ''}`}
-                key={`${pet.id}-photo-${index}`}
-                onClick={() => setActiveImage(image)}
-                type="button"
-              >
-                <img alt="" loading="lazy" src={image} />
-              </button>
-            ))}
+            {gallery.map((image, index) => {
+              const galleryAsset = imageCredits.find((asset) => asset.path === image);
+              return (
+                <button
+                  aria-label={`Show ${pet.name} photo ${index + 1}`}
+                  aria-pressed={activeImage === image}
+                  className={`pet-detail__thumbnail${activeImage === image ? ' pet-detail__thumbnail--active' : ''}`}
+                  key={`${pet.id}-photo-${index}`}
+                  onClick={() => setActiveImage(image)}
+                  type="button"
+                >
+                  <FallbackImage alt={galleryAsset?.alt ?? `${pet.name} gallery thumbnail ${index + 1}`} height={galleryAsset?.height ?? 72} src={image} style={{ objectPosition: galleryAsset?.objectPosition }} width={galleryAsset?.width ?? 96} />
+                </button>
+              );
+            })}
           </div>
         </div>
 

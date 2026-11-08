@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700" role="img" aria-labelledby="title desc">
+<title id="title">Original placeholder illustration for the sample news article: Preparing a welcome space</title><desc id="desc">Clearly labelled original photo placeholder for Pet Heaven coursework. Replace with a licensed photograph and update the image catalogue.</desc>
+<defs><linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F2F8F6"/><stop offset="1" stop-color="#FFF8F0"/></linearGradient><pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0H0V56" fill="none" stroke="#2A9D8F" stroke-opacity=".08"/></pattern></defs>
+<rect width="1000" height="700" fill="url(#base)"/><rect width="1000" height="700" fill="url(#grid)"/>
+<circle cx="870.0" cy="105.0" r="406.0" fill="#2A9D8F" opacity=".12"/><circle cx="820.0" cy="385.00000000000006" r="196.00000000000003" fill="#F4A261" opacity=".28"/>
+<path d="M0 567.0Q300.0 413.0 630.0 595.0T1000 560.0V700H0Z" fill="#2A9D8F" opacity=".09"/>
+<g transform="translate(570.0 322.0) scale(1.3)"><g fill="none" stroke="#264653" stroke-width="20" stroke-linejoin="round"><path d="M-145 10L0-105L145 10M-110-6v195h220V-6"/><path d="M-37 188V75h74v113"/></g><circle cy="17" r="24" fill="#f4a261"/></g>
+<rect x="55.0" y="42.0" width="320.0" height="45.5" rx="22.75" fill="#264653"/>
+<text x="215.0" y="72.485" fill="#FFF8F0" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-size="19.11" font-weight="700" letter-spacing="1.5">PHOTO PLACEHOLDER</text>
+<text x="55.0" y="581.0" fill="#264653" font-family="Poppins,Arial,sans-serif" font-size="44.0" font-weight="700">Preparing a welcome space</text>
+<text x="55.0" y="633.5" fill="#264653" opacity=".8" font-family="Nunito,Arial,sans-serif" font-size="22.0">Replace with a licensed photo · Pet Heaven coursework</text>
+</svg>

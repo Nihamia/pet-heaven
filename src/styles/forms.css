@@ -316,6 +316,8 @@
 .contact-map-card iframe {
   display: block;
   width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
   min-height: 18rem;
   border: 0;
 }
@@ -441,5 +443,132 @@
   .adopt-review dl div {
     grid-template-columns: 1fr;
     gap: var(--space-1);
+  }
+}
+
+/* Share a calm form-and-guide layout while preserving each page's existing fields. */
+.service-main {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-6);
+}
+
+.service-main > .service-page__notice,
+.service-main > .service-sample-note,
+.service-main > .member-check-card {
+  margin-block: 0;
+}
+
+.service-main > .adopt-application-card {
+  margin-block-start: 0;
+}
+
+.service-page__columns--form > * {
+  min-width: 0;
+}
+
+.service-page__columns--form .member-check-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.form-guide {
+  min-width: 0;
+  align-self: start;
+  border-block-start: 0.25rem solid var(--color-orange);
+  box-shadow: var(--shadow-soft);
+}
+
+.form-guide > .eyebrow {
+  margin-block-end: var(--space-3);
+}
+
+.form-guide h2 {
+  margin-block-end: var(--space-5);
+  font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+}
+
+.form-guide__intro > :last-child {
+  margin-block-end: 0;
+}
+
+.form-guide__next {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 0.0625rem solid var(--color-border);
+}
+
+.form-guide__next h3 {
+  margin-block-end: var(--space-4);
+  font-size: 1.05rem;
+}
+
+.form-guide__progress {
+  display: inline-block;
+  margin-block: 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-teal-dark);
+  background: var(--color-surface-soft);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.form-guide__steps {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.form-guide__steps li {
+  display: grid;
+  grid-template-columns: 1.9rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.form-guide .form-guide__step-number {
+  display: grid;
+  width: 1.9rem;
+  min-height: 1.9rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-teal-dark);
+  background: var(--color-surface-soft);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.form-guide__steps li[aria-current='step'] .form-guide__step-number {
+  color: var(--color-orange-ink);
+  background: var(--color-orange);
+}
+
+.form-guide__steps strong {
+  color: var(--color-ink);
+  font-size: 0.94rem;
+}
+
+.form-guide__steps p {
+  margin-block: var(--space-1) 0;
+  font-size: 0.87rem;
+  line-height: 1.6;
+}
+
+@media (min-width: 56.25rem) {
+  .service-page__columns.service-page__columns--form {
+    grid-template-columns: minmax(0, 1.55fr) minmax(16.5rem, 0.85fr);
+    align-items: start;
+    gap: var(--space-8);
+  }
+}
+
+@media (max-width: 37.49rem) {
+  .form-guide {
+    padding: var(--space-5);
   }
 }

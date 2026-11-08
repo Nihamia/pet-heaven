@@ -10,11 +10,12 @@ import './styles/pets.css';
 import './styles/home-about.css';
 import './styles/forms.css';
 import './styles/polish.css';
+import './styles/images.css';
 
 // Mount the single-page application and make browser history available to its routes.
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <App />
     </BrowserRouter>
   </StrictMode>,

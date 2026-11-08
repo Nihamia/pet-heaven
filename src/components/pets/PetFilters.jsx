@@ -41,6 +41,8 @@ export default function PetFilters({ filters, onChange, onClear }) {
           type="select"
           value={filters.goodWithKids}
         />
+        <FormField label="HDB-friendly" name="hdbFriendly" onChange={(event) => onChange('hdbFriendly', event.target.value)}
+          options={[{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]} placeholder="Any" type="select" value={filters.hdbFriendly} />
         <FormField
           label="Vaccination"
           name="vaccinated"

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
+import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -205,6 +206,8 @@ export default function AdoptPage() {
       eyebrow="Adoption enquiry"
       title="Tell us about the home you can offer."
     >
+      <div className="service-page__columns service-page__columns--form">
+        <div className="service-main">
       {petLoadMessage && <Alert className="service-page__notice" tone="warning">{petLoadMessage}</Alert>}
       <Card className="member-check-card" padding="large">
         <div>
@@ -290,6 +293,21 @@ export default function AdoptPage() {
         </Card>
       )}
       <p className="service-sample-note">Membership lookup uses this browser's saved registration. A secure cross-device member check needs an authenticated backend.</p>
+        </div>
+        <FormGuide
+          eyebrow="A thoughtful match"
+          title="Your adoption journey"
+          currentStep={!verifiedMember ? 1 : isReviewing ? 3 : 2}
+          steps={[
+            { title: 'Verify membership', text: 'Use the email and member ID from your registration in this browser.' },
+            { title: 'Share your home', text: 'Tell us about daily routines, housing, and the care you can offer.' },
+            { title: 'Review your enquiry', text: 'Check your answers before sending. The confirmation includes a reference number.' },
+          ]}
+        >
+          <p>Take your time to consider the pet's needs and ask questions before you commit.</p>
+          <p>An enquiry starts a conversation. The team will confirm any meeting or interview arrangements with you.</p>
+        </FormGuide>
+      </div>
     </FormPageShell>
   );
 }

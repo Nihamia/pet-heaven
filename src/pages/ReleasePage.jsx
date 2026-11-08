@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
+import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -144,6 +145,8 @@ export default function ReleasePage() {
       eyebrow="Rehome a pet"
       title="Let's find a caring next step."
     >
+      <div className="service-page__columns service-page__columns--form">
+        <div className="service-main">
       <Alert className="service-page__notice" tone="info" title="There may be options to explore">
         Before making a decision, you can ask the team about temporary support, fostering, behaviour guidance, or other practical help. Reaching out does not commit you to releasing your pet.
       </Alert>
@@ -210,6 +213,20 @@ export default function ReleasePage() {
         </form>
       </Card>
       <p className="service-sample-note">Your photo is sent only through the configured EmailJS template. The browser storage fallback keeps the filename and details, not the image file itself.</p>
+        </div>
+        <FormGuide
+          eyebrow="One step at a time"
+          title="Support without judgement"
+          steps={[
+            { title: 'Share what you can', text: 'Describe your pet, their routine, and the situation you would like help with.' },
+            { title: 'Talk through options', text: 'A conversation can help identify practical support or a safe rehoming plan.' },
+            { title: 'Agree on the next step', text: 'A preferred handover date is a request until the team confirms arrangements.' },
+          ]}
+        >
+          <p>Your situation matters. Reaching out is a way to explore support for both you and your pet.</p>
+          <p>You do not need to make a handover decision before asking for help.</p>
+        </FormGuide>
+      </div>
     </FormPageShell>
   );
 }

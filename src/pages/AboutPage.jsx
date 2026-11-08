@@ -3,6 +3,17 @@ import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
+import { imageAssets } from '../data/images.js';
+import FallbackImage from '../components/ui/FallbackImage.jsx';
+import PageBanner from '../components/ui/PageBanner.jsx';
+import StepCard from '../components/home/StepCard.jsx';
+
+const missionCards = [
+  { number: '01', title: 'Safety before speed', text: 'Quiet spaces and steady routines give every new arrival time to rest and feel secure.' },
+  { number: '02', title: 'Care for the whole animal', text: 'Health, enrichment, and gentle interaction matter as much as a warm place to sleep.' },
+  { number: '03', title: 'Honest, kind guidance', text: 'Clear profiles and patient conversations help people understand each pet before making a commitment.' },
+  { number: '04', title: 'A home for the long term', text: 'Thoughtful introductions and practical preparation help pets and households begin well together.' },
+];
 
 const storyMoments = [
   {
@@ -31,24 +42,28 @@ const facilities = [
   {
     icon: '⌂',
     title: 'A calm shelter',
+    image: imageAssets.facilityShelter,
     text: 'Clean, secure rooms give animals a predictable place to rest, eat, and get used to human company.',
     tag: 'Rest & routine',
   },
   {
     icon: '✚',
     title: 'Veterinary care',
+    image: imageAssets.facilityVet,
     text: 'Health checks, treatment plans, and follow-up care help each pet feel their best before adoption.',
     tag: 'Health first',
   },
   {
     icon: '☼',
     title: 'Play and enrichment',
+    image: imageAssets.facilityPlay,
     text: 'Safe play areas and gentle activities help animals build confidence and show their personalities.',
     tag: 'Room to explore',
   },
   {
     icon: '◌',
     title: 'Quiet recovery space',
+    image: imageAssets.facilityRecovery,
     text: 'New arrivals and animals needing extra care can settle at their own pace in a lower-stimulation area.',
     tag: 'Time to settle',
   },
@@ -62,10 +77,10 @@ const adoptionSteps = [
 ];
 
 const teamRoles = [
-  { icon: '♡', title: 'Animal care team', text: 'Keeps daily routines, feeding, comfort, and observation centred on each pet.' },
-  { icon: '✚', title: 'Veterinary partners', text: 'Support check-ups, treatment, vaccination, and practical health guidance.' },
-  { icon: '⌂', title: 'Foster community', text: 'Offers temporary homes where pets can rest and practise family life.' },
-  { icon: '↗', title: 'Adoption coordinators', text: 'Help people and pets meet thoughtfully, with clear expectations on both sides.' },
+  { title: 'Animal care team', image: imageAssets.teamCare, text: 'Keeps daily routines, feeding, comfort, and observation centred on each pet.' },
+  { title: 'Veterinary partners', image: imageAssets.teamVet, text: 'Support check-ups, treatment, vaccination, and practical health guidance.' },
+  { title: 'Foster community', image: imageAssets.teamFoster, text: 'Offers temporary homes where pets can rest and practise family life.' },
+  { title: 'Adoption coordinators', image: imageAssets.teamAdoption, text: 'Help people and pets meet thoughtfully, with clear expectations on both sides.' },
 ];
 
 const faqItems = [
@@ -103,11 +118,12 @@ const eligibilityItems = [
 export default function AboutPage() {
   return (
     <div className="about-page">
+      <PageBanner breadcrumb="About" image={imageAssets.bannerAbout} title="A community built on care" />
       <section aria-labelledby="about-title" className="about-hero">
         <div className="container about-hero__inner">
           <Badge tone="teal">Care with patience</Badge>
           <SectionHeading
-            as="h1"
+            as="h2"
             description="Pet Heaven is a community built around a simple idea: every animal deserves safety, thoughtful care, and a real chance to belong."
             eyebrow="A place to begin again"
             id="about-title"
@@ -120,7 +136,7 @@ export default function AboutPage() {
       <section aria-labelledby="about-purpose-title" className="about-purpose section-space">
         <div className="container about-purpose__grid">
           <div className="about-purpose__stamp" aria-hidden="true"><span>Care</span><b>♡</b><span>Belong</span></div>
-          <div>
+          <div className="about-purpose__intro">
             <SectionHeading
               description="Our purpose is to provide a safe pause between a difficult past and a more hopeful future."
               eyebrow="Our purpose"
@@ -128,11 +144,9 @@ export default function AboutPage() {
               title="Every animal is more than a case file."
             />
             <p>We learn what helps each pet feel secure, support their health and behaviour, and share honest information with potential adopters. We want each match to start with understanding and grow through steady care.</p>
-            <div className="about-purpose__values">
-              <span><b>01</b> Safety before speed</span>
-              <span><b>02</b> Honest, kind guidance</span>
-              <span><b>03</b> A home for every story</span>
-            </div>
+          </div>
+          <div className="about-mission-grid">
+            {missionCards.map((mission) => <StepCard className="about-mission-card" key={mission.number} {...mission} />)}
           </div>
         </div>
       </section>
@@ -149,7 +163,7 @@ export default function AboutPage() {
             {storyMoments.map((moment, index) => (
               <li className="about-timeline__item" key={moment.label}>
                 <span aria-hidden="true" className="about-timeline__marker">{String(index + 1).padStart(2, '0')}</span>
-                <div>
+                <div className="about-timeline__content">
                   <p className="eyebrow">{moment.label}</p>
                   <h3>{moment.title}</h3>
                   <p>{moment.text}</p>
@@ -169,13 +183,16 @@ export default function AboutPage() {
             id="about-facilities-title"
             title="Thoughtful care, in every corner."
           />
+          <p className="home-sample-note">Stock photos illustrate these care spaces; they are not photographs of Pet Heaven facilities.</p>
           <div className="about-facility-grid">
             {facilities.map((facility) => (
-              <Card className="about-facility-card" key={facility.title} padding="large">
-                <span aria-hidden="true" className="about-facility-card__icon">{facility.icon}</span>
-                <Badge tone="teal">{facility.tag}</Badge>
-                <h3>{facility.title}</h3>
-                <p>{facility.text}</p>
+              <Card className="about-facility-card" key={facility.title} padding="none">
+                <FallbackImage alt={facility.image.alt} className="about-facility-card__photo" height={facility.image.height} src={facility.image.path} style={{ objectPosition: facility.image.objectPosition }} width={facility.image.width} />
+                <div className="about-facility-card__body">
+                  <div className="about-facility-card__meta"><span aria-hidden="true" className="about-facility-card__icon">{facility.icon}</span><Badge tone="teal">{facility.tag}</Badge></div>
+                  <h3>{facility.title}</h3>
+                  <p>{facility.text}</p>
+                </div>
               </Card>
             ))}
           </div>
@@ -194,8 +211,7 @@ export default function AboutPage() {
             <ol className="about-adoption-steps">
               {adoptionSteps.map((step) => (
                 <li key={step.number}>
-                  <span aria-hidden="true">{step.number}</span>
-                  <div><h3>{step.title}</h3><p>{step.text}</p></div>
+                  <StepCard className="about-adoption-step" {...step} />
                 </li>
               ))}
             </ol>
@@ -220,12 +236,12 @@ export default function AboutPage() {
             id="about-team-title"
             title="A community behind every new beginning."
           />
+          <p className="home-sample-note">Stock photos illustrate team roles rather than actual Pet Heaven staff. A group photo may represent more than one role.</p>
           <div className="about-team-grid">
-            {teamRoles.map((role, index) => (
-              <Card className="about-team-card" key={role.title} padding="medium">
-                <div aria-hidden="true" className={`about-team-card__avatar about-team-card__avatar--${index + 1}`}>{role.icon}</div>
-                <h3>{role.title}</h3>
-                <p>{role.text}</p>
+            {teamRoles.map((role) => (
+              <Card className="about-team-card" key={role.title} padding="none">
+                <FallbackImage alt={role.image.alt} className="about-team-card__photo" height={role.image.height} src={role.image.path} style={{ objectPosition: role.image.objectPosition }} width={role.image.width} />
+                <div className="about-team-card__body"><h3>{role.title}</h3><p>{role.text}</p></div>
               </Card>
             ))}
           </div>
@@ -266,7 +282,9 @@ export default function AboutPage() {
             </div>
             <div>
               <span aria-hidden="true" className="about-visit-card__icon">◷</span>
-              <div><p className="eyebrow">Visiting hours</p><h3>By appointment</h3><p>Monday–Saturday, 10:00 am–6:00 pm</p></div>
+              <div><p className="eyebrow">Plan your visit</p><h3>Opening hours</h3>
+                <dl className="about-hours"><div><dt>Monday–Saturday</dt><dd>10:00 am–6:00 pm</dd></div><div><dt>Visits</dt><dd>By appointment</dd></div></dl>
+              </div>
             </div>
             <Button to="/contact">Ask about a visit <span aria-hidden="true">→</span></Button>
           </Card>
@@ -274,7 +292,7 @@ export default function AboutPage() {
       </section>
 
       <section aria-label="Project content note" className="about-project-note">
-        <div className="container"><p>This is a university project concept. Policies, care details, and visit information are illustrative and should be verified before public use.</p></div>
+        <div className="container"><p>This is a university project concept. Stock photos illustrate facilities and team roles; they do not identify Pet Heaven premises or staff. Policies, care details, and visit information are illustrative and should be verified before public use.</p></div>
       </section>
     </div>
   );

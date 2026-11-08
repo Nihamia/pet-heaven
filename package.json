@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "check:images": "node scripts/check-images.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

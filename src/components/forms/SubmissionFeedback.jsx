@@ -18,7 +18,7 @@ export default function SubmissionFeedback({ result, error, referenceId }) {
       <p>{describeSaveLocation(result.saved)}</p>
       <p>{emailWasSent
         ? 'The Pet Heaven team has received your message by email.'
-        : 'Set up EmailJS to send this form to the administrator. Please keep the reference below.'}</p>
+        : 'The email notification could not be sent. Keep your reference below so you can follow up with the team.'}</p>
       {referenceId && <p><strong>Reference:</strong> {referenceId}</p>}
     </Alert>
   );

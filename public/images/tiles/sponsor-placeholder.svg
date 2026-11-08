@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="675" viewBox="0 0 900 675" role="img" aria-labelledby="title desc">
+<title id="title">Original placeholder illustration for pet food and care supplies</title><desc id="desc">Clearly labelled original photo placeholder for Pet Heaven coursework. Replace with a licensed photograph and update the image catalogue.</desc>
+<defs><linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F2F8F6"/><stop offset="1" stop-color="#FFF8F0"/></linearGradient><pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0H0V56" fill="none" stroke="#2A9D8F" stroke-opacity=".08"/></pattern></defs>
+<rect width="900" height="675" fill="url(#base)"/><rect width="900" height="675" fill="url(#grid)"/>
+<circle cx="783.0" cy="101.25" r="391.5" fill="#2A9D8F" opacity=".12"/><circle cx="738.0" cy="371.25000000000006" r="189.00000000000003" fill="#F4A261" opacity=".28"/>
+<path d="M0 546.75Q270.0 398.25 567.0 573.75T900 540.0V675H0Z" fill="#2A9D8F" opacity=".09"/>
+<g transform="translate(513.0 310.5) scale(1.17)"><g stroke="#264653" stroke-width="12" stroke-linejoin="round"><path d="M-140-20L0-95l140 75v180L0 215l-140-55z" fill="#f4a261"/><path d="M-140-20L0 45l140-65M0 45v170" fill="none"/></g><path d="M-72 76q-25-24-24-4q0 17 24 30q24-13 24-30q1-20-24 4" fill="#264653"/></g>
+<rect x="49.5" y="40.5" width="288.0" height="43.875" rx="21.9375" fill="#264653"/>
+<text x="193.5" y="69.89625000000001" fill="#FFF8F0" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-size="18.4275" font-weight="700" letter-spacing="1.5">PHOTO PLACEHOLDER</text>
+<text x="49.5" y="560.25" fill="#264653" font-family="Poppins,Arial,sans-serif" font-size="39.599999999999994" font-weight="700">Everyday care matters</text>
+<text x="49.5" y="610.875" fill="#264653" opacity=".8" font-family="Nunito,Arial,sans-serif" font-size="19.799999999999997">Replace with a licensed photo · Pet Heaven coursework</text>
+</svg>

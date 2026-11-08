@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
+import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
@@ -120,18 +121,7 @@ export default function JoinPage() {
       eyebrow="Join the community"
       title="A little support can change a whole story."
     >
-      <div className="service-page__columns">
-        <Card className="service-benefits" padding="large">
-          <p className="eyebrow">Membership can mean</p>
-          <h2>More hands, more hope.</h2>
-          <ul>
-            <li><span aria-hidden="true">♡</span> Help provide food, care, and a soft place to rest.</li>
-            <li><span aria-hidden="true">♡</span> Share your time as a volunteer or foster carer.</li>
-            <li><span aria-hidden="true">♡</span> Hear about new ways to support local animals.</li>
-          </ul>
-          <p className="service-benefits__note">You can update your interests later by contacting the team.</p>
-        </Card>
-
+      <div className="service-page__columns service-page__columns--form">
         <Card className="service-form-card" padding="large">
           <SectionHeading eyebrow="Member registration" title="Tell us a little about yourself." />
           {form.submitError && <SubmissionFeedback error={form.submitError} />}
@@ -143,7 +133,7 @@ export default function JoinPage() {
             <FormField autoComplete="new-password" error={fieldError('confirmPassword')} label="Confirm password" name="confirmPassword" onBlur={form.handleBlur} onChange={form.handleChange} required type="password" value={form.values.confirmPassword} />
             <FormField autoComplete="street-address" error={fieldError('address')} label="Home address" name="address" onBlur={form.handleBlur} onChange={form.handleChange} required value={form.values.address} />
 
-            <fieldset className="service-fieldset">
+            <fieldset className="service-fieldset" id="support-interests">
               <legend>How would you like to help?</legend>
               <p className="service-fieldset__hint">Choose one or more interests.</p>
               <div className="service-checkbox-grid">
@@ -159,6 +149,23 @@ export default function JoinPage() {
             <Button className="service-form__submit" loading={form.isSubmitting} type="submit">{form.isSubmitting ? 'Saving your details…' : 'Join the community'}</Button>
           </form>
         </Card>
+        <FormGuide
+          className="service-benefits"
+          eyebrow="Membership can mean"
+          title="More hands, more hope."
+          steps={[
+            { title: 'Keep your member ID', text: 'Save the ID shown after registration for adoption enquiries in this browser.' },
+            { title: 'Choose a way to help', text: 'Your interests help the team understand the support you would like to offer.' },
+            { title: 'Stay in touch', text: 'The team can discuss suitable opportunities using the contact details you share.' },
+          ]}
+        >
+          <ul>
+            <li><span aria-hidden="true">♡</span> Help provide food, care, and a soft place to rest.</li>
+            <li><span aria-hidden="true">♡</span> Share your time as a volunteer or foster carer.</li>
+            <li><span aria-hidden="true">♡</span> Hear about new ways to support local animals.</li>
+          </ul>
+          <p className="service-benefits__note">You can update your interests later by contacting the team.</p>
+        </FormGuide>
       </div>
     </FormPageShell>
   );

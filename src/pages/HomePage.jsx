@@ -1,12 +1,35 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ImageTile from '../components/home/ImageTile.jsx';
+import NewsCard from '../components/home/NewsCard.jsx';
+import RandomPetPhoto from '../components/home/RandomPetPhoto.jsx';
+import StatCounter from '../components/home/StatCounter.jsx';
+import StepCard from '../components/home/StepCard.jsx';
+import StoryCard from '../components/home/StoryCard.jsx';
 import PetCard from '../components/pets/PetCard.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
+import FallbackImage from '../components/ui/FallbackImage.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import usePets from '../hooks/usePets.js';
+import useScrollReveal from '../hooks/useScrollReveal.js';
+import { imageAssets as homeImages } from '../data/images.js';
+
+const actionTiles = [
+  { title: 'Adopt', description: 'Find a companion. Begin a new chapter.', to: '/pets', image: homeImages.tileAdopt },
+  { title: 'Release', description: 'Talk through a safe next step.', to: '/release', image: homeImages.tileRelease },
+  { title: 'Join', description: 'Give your time, care, or support.', to: '/join', image: homeImages.tileJoin },
+  { title: 'Sponsor', description: 'Help make everyday care possible.', to: '/#sponsor', image: homeImages.tileSponsor },
+];
+
+const promises = [
+  { number: '01', title: 'Safety comes first', text: 'A calm place to rest, gentle handling, and a care plan shaped around each animal.' },
+  { number: '02', title: 'Care for the whole pet', text: 'Health, enrichment, and familiar routines help confidence grow at the pet’s own pace.' },
+  { number: '03', title: 'Make thoughtful matches', text: 'Honest profiles and open conversations help households understand the commitment ahead.' },
+  { number: '04', title: 'Keep the door open', text: 'Questions are welcome before adoption and while a new companion settles into home.' },
+];
 
 const impactStats = [
   { label: 'pets rehomed', target: 1240, suffix: '+' },
@@ -25,91 +48,51 @@ const careSteps = [
   {
     number: '02',
     icon: '☼',
-    title: 'Get to know each other',
-    text: 'Our team will help arrange a conversation and a gentle first meeting.',
+    title: 'Join and enquire',
+    text: 'Register as a member, then tell us about your household and the pet you hope to meet.',
   },
   {
     number: '03',
     icon: '⌂',
-    title: 'Make room for love',
-    text: 'Prepare together, welcome your new companion, and keep in touch as they settle in.',
+    title: 'Meet with care',
+    text: 'A conversation and a gentle introduction help everyone understand the next step.',
+  },
+  {
+    number: '04',
+    icon: '⌂',
+    title: 'Settle in together',
+    text: 'Prepare your home, establish patient routines, and ask for guidance along the way.',
   },
 ];
 
 const adopterStories = [
   {
-    quote: 'We were given time to learn Luna’s pace. A year later, she still greets us at the door like it is the best day of her life.',
-    name: 'A new beginning with Luna',
-    detail: 'Illustrative adopter story',
+    quote: 'We were given time to learn our new companion’s pace. A year later, coming home still feels like the best part of the day.',
+    title: 'A softer place to land',
+    image: homeImages.storyHome1,
   },
   {
-    quote: 'The team helped us understand what Milo needed before we brought him home. That patient start made all the difference.',
-    name: 'A calm start for Milo',
-    detail: 'Illustrative adopter story',
+    quote: 'The team helped us understand what our companion needed before coming home. That patient start made all the difference.',
+    title: 'Small routines, growing trust',
+    image: homeImages.storyHome2,
   },
   {
     quote: 'We came in looking for a pet and left with a friend who fits our family in a way we never expected.',
-    name: 'Room for one more',
-    detail: 'Illustrative adopter story',
+    title: 'Room for one more',
+    image: homeImages.storyHome3,
   },
 ];
 
-// Animate a community figure once it enters view, with a reduced-motion alternative.
-function CountUp({ target, suffix = '' }) {
-  const [value, setValue] = useState(0);
-  const numberRef = useRef(null);
-
-  useEffect(() => {
-    const element = numberRef.current;
-    if (!element) return undefined;
-
-    let frameId;
-    let observer;
-    let hasStarted = false;
-
-    function animate() {
-      if (hasStarted) return;
-      hasStarted = true;
-      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      if (reduceMotion) {
-        setValue(target);
-        return;
-      }
-
-      const startedAt = performance.now();
-      const duration = 1100;
-      function tick(now) {
-        const progress = Math.min((now - startedAt) / duration, 1);
-        const easedProgress = 1 - (1 - progress) ** 3;
-        setValue(Math.round(target * easedProgress));
-        if (progress < 1) frameId = window.requestAnimationFrame(tick);
-      }
-      frameId = window.requestAnimationFrame(tick);
-    }
-
-    if ('IntersectionObserver' in window) {
-      observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) {
-          observer.disconnect();
-          animate();
-        }
-      }, { threshold: 0.35 });
-      observer.observe(element);
-    } else {
-      animate();
-    }
-
-    return () => {
-      observer?.disconnect();
-      if (frameId) window.cancelAnimationFrame(frameId);
-    };
-  }, [target]);
-
-  return <span ref={numberRef}>{value.toLocaleString()}{suffix}</span>;
-}
+const newsItems = [
+  { id: 'news-care', title: 'A welcome space before the first hello', date: '2026-11-05', displayDate: '5 November 2026', image: homeImages.newsCare, summary: 'A few quiet preparations can make a new home feel less overwhelming.', details: 'Choose a calm resting area, agree on household routines, and check windows, gates, and stored items before the first day. Let a new companion explore gradually and offer predictable breaks. This is an illustrative update for the fictional Pet Heaven society.' },
+  { id: 'news-volunteer', title: 'Good care starts with learning', date: '2026-11-02', displayDate: '2 November 2026', image: homeImages.newsVolunteer, summary: 'Volunteers can contribute through practical tasks and patient, consistent support.', details: 'Useful support can include preparing enrichment, organising supplies, and helping keep care spaces tidy. Tell us about your interests when joining so the team can discuss a suitable role. This is an illustrative update rather than an announcement of a scheduled event.' },
+  { id: 'news-supplies', title: 'Small supplies, everyday comfort', date: '2026-10-28', displayDate: '28 October 2026', image: homeImages.newsSupplies, summary: 'The simple items used every day help make a care space comfortable.', details: 'Clean towels, appropriate food, litter, and safe enrichment items are useful examples of shelter supplies. Always ask which items and quantities are currently suitable before arranging a contribution. This fictional society does not collect payments through the website.' },
+];
 
 // Welcome visitors, feature available pets, and make adoption and support easy to find.
 export default function HomePage() {
+  const [showMoreFriends, setShowMoreFriends] = useState(false);
+  const pageRef = useScrollReveal();
   const { pets, message: petLoadMessage } = usePets();
   const featuredPets = useMemo(() => pets
     .filter((pet) => pet.status === 'Available')
@@ -129,8 +112,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="home-page">
+    <div className="home-page" ref={pageRef}>
       <section aria-labelledby="home-title" className="home-hero">
+        <FallbackImage alt={homeImages.homeHero.alt} className="home-hero__photo" fetchPriority="high" height={homeImages.homeHero.height} loading="eager" src={homeImages.homeHero.path ?? homeImages.homeHero.src} style={{ objectPosition: homeImages.homeHero.objectPosition }} width={homeImages.homeHero.width} />
         <div className="container home-hero__grid">
           <div className="home-hero__copy">
             <p className="eyebrow"><span aria-hidden="true">✦</span> A little love goes a long way</p>
@@ -140,23 +124,17 @@ export default function HomePage() {
             </p>
             <div className="home-hero__actions">
               <Button size="large" to="/pets">Meet the pets <span aria-hidden="true">→</span></Button>
-              <Button to="/join" variant="outline">Be part of the story</Button>
+              <Button to="/join" variant="secondary">Be part of the story</Button>
             </div>
             <p className="home-hero__note"><span aria-hidden="true">♡</span> Small acts of care can lead to a lifetime of companionship.</p>
           </div>
 
-          <figure className="home-hero__media">
-            <img
-              alt="A group of dogs at an animal shelter, ready for a new home"
-              fetchPriority="high"
-              src="https://images.pexels.com/photos/12195429/pexels-photo-12195429.jpeg?auto=compress&cs=tinysrgb&w=1400"
-            />
-            <figcaption>
-              A safe place to wait for a new beginning.
-              <a href="https://www.pexels.com/photo/dogs-in-animal-shelter-12195429/" rel="noreferrer" target="_blank">Photo by Mia X on Pexels</a>
-            </figcaption>
-            <span aria-hidden="true" className="home-hero__sticker">Rescue<br />Rehome<br /><b>♡</b></span>
-          </figure>
+        </div>
+      </section>
+
+      <section aria-label="Ways to make a difference" className="home-actions section-space" data-reveal>
+        <div className="container home-tile-grid">
+          {actionTiles.map((tile) => <ImageTile key={tile.title} {...tile} />)}
         </div>
       </section>
 
@@ -168,41 +146,44 @@ export default function HomePage() {
           </div>
           <dl className="home-stats__grid">
             {impactStats.map((stat) => (
-              <div className="home-stat" key={stat.label}>
-                <dt>{stat.label}</dt>
-                <dd><CountUp suffix={stat.suffix} target={stat.target} /></dd>
-              </div>
+              <StatCounter key={stat.label} {...stat} />
             ))}
           </dl>
-          <p className="home-stats__note">Sample figures for this student project; replace with verified organisation data.</p>
+          <p className="home-stats__note">Illustrative figures for the fictional Pet Heaven society.</p>
         </div>
       </section>
 
-      <section aria-labelledby="home-steps-title" className="home-section home-steps section-space">
+      <section aria-labelledby="home-promise-title" className="home-promise section-space" data-reveal>
+        <div className="container">
+          <SectionHeading align="center" description="Every small decision should help a pet feel safer, healthier, and more ready for life with a family." eyebrow="What guides our care" id="home-promise-title" title="Our promise" />
+          <div className="home-promise-grid">{promises.map((promise) => <StepCard className="home-promise-card" key={promise.number} {...promise} />)}</div>
+          <Link className="text-link home-promise__link" to="/about">Get to know Pet Heaven <span aria-hidden="true">→</span></Link>
+        </div>
+      </section>
+
+      <section aria-labelledby="home-steps-title" className="home-section home-steps section-space" data-reveal>
         <div className="container">
           <SectionHeading
             align="center"
             description="Adoption is a relationship, not a race. We help pets and people find a thoughtful way forward together."
             eyebrow="A gentle path forward"
             id="home-steps-title"
-            title="How it works"
+            title="How adoption works"
           />
           <div className="home-step-grid">
             {careSteps.map((step) => (
-              <Card className="home-step-card" key={step.number} padding="large">
-                <div aria-hidden="true" className="home-step-card__top">
-                  <span className="home-step-card__icon">{step.icon}</span>
-                  <span className="home-step-card__number">{step.number}</span>
-                </div>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </Card>
+              <StepCard key={step.number} {...step} />
             ))}
           </div>
+          <Card as="aside" className="home-adoption-checklist" padding="large">
+            <div><p className="eyebrow">Before you adopt</p><h3>Make room for a lifelong companion.</h3></div>
+            <ul><li>Everyone at home is ready to welcome a pet.</li><li>Your housing allows the pet you hope to adopt.</li><li>You can plan for daily care and veterinary costs.</li><li>You have time for settling in, learning, and play.</li></ul>
+            <Button to="/about#about-adoption-title" variant="outline">Explore the adoption process</Button>
+          </Card>
         </div>
       </section>
 
-      <section aria-labelledby="home-featured-title" className="home-featured section-space">
+      <section aria-labelledby="home-featured-title" className="home-featured section-space" data-reveal>
         <div className="container">
           {petLoadMessage && <Alert className="home-featured__alert" tone="warning">{petLoadMessage}</Alert>}
           <div className="home-section-heading-row">
@@ -224,48 +205,70 @@ export default function HomePage() {
               />
             ))}
           </div>
-          <p className="home-sample-note">Pet profile images are placeholders. Add credited Unsplash or Pexels photos before submission.</p>
+          <p className="home-sample-note">Stock photos illustrate fictional Pet Heaven profiles; they do not identify real animals available for adoption.</p>
         </div>
       </section>
 
-      <section aria-labelledby="home-mission-title" className="home-mission section-space">
-        <div className="container home-mission__grid">
-          <div aria-hidden="true" className="home-mission__mark">♡</div>
-          <div>
-            <p className="eyebrow">Why Pet Heaven</p>
-            <h2 id="home-mission-title">Care that sees the whole animal.</h2>
-            <p>
-              A pet needs more than a roof. We make space for veterinary care, patient routines, enrichment, and the trust it takes to begin again. Every next step is shaped around the animal in front of us.
-            </p>
-            <Link className="text-link" to="/about">Learn about our approach <span aria-hidden="true">→</span></Link>
-          </div>
-          <div className="home-mission__promise">
-            <span aria-hidden="true">✦</span>
-            <p>Kindness, patience, and a safe landing place.</p>
-          </div>
-        </div>
-      </section>
-
-      <section aria-labelledby="home-stories-title" className="home-stories section-space">
+      <section aria-labelledby="home-stories-title" className="home-stories section-space" data-reveal>
         <div className="container">
           <SectionHeading
             align="center"
             description="A good match can change everyday life for everyone in the home."
             eyebrow="Love finds its way"
             id="home-stories-title"
-            title="Little stories, big heart"
+            title="Gone to Good Homes"
           />
           <div className="home-story-grid">
             {adopterStories.map((story) => (
-              <Card className="home-story-card" key={story.name} padding="large">
-                <span aria-hidden="true" className="home-story-card__quote">“</span>
-                <blockquote>{story.quote}</blockquote>
-                <p className="home-story-card__name">{story.name}</p>
-                <p className="home-story-card__detail">{story.detail}</p>
-              </Card>
+              <StoryCard key={story.title} {...story} />
             ))}
           </div>
-          <p className="home-sample-note">These example stories are illustrative project content; replace them with consented adopter stories.</p>
+          <p className="home-sample-note">These illustrative stories show the kind of settling-in journey we hope to support.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="home-news-title" className="home-news section-space" data-reveal id="latest-news">
+        <div className="container">
+          <SectionHeading align="center" description="Ideas for thoughtful care and ways to take part. These updates are illustrative stories for our fictional society." eyebrow="From our community" id="home-news-title" title="Latest news" />
+          <div className="home-news-grid">{newsItems.map((item) => <NewsCard key={item.id} {...item} />)}</div>
+        </div>
+      </section>
+
+      <section aria-labelledby="home-support-title" className="home-support section-space" data-reveal id="sponsor">
+        <div className="container home-support__grid">
+          <div>
+            <SectionHeading description="Help make the ordinary things possible: a nourishing meal, a clean resting place, and time to play." eyebrow="Care takes a community" id="home-support-title" title="Sponsor a little everyday comfort" />
+            <p>Interested in helping a pet while they wait for a home? Tell us how you would like to support their care, and we can discuss a suitable next step.</p>
+            <div className="home-support__actions"><Button to="/join#support-interests" variant="secondary">Become a supporter</Button><Button to="/contact" variant="outline">Ask how to help</Button></div>
+            <p className="home-sample-note">Information only. No payments are collected on this website.</p>
+          </div>
+          <Card as="aside" className="home-needs" id="things-we-need" padding="large">
+            <p className="eyebrow">Practical kindness</p><h3>Things we need</h3>
+            <ul><li><span aria-hidden="true">◉</span>Appropriate cat and dog food</li><li><span aria-hidden="true">▥</span>Clean towels and washable bedding</li><li><span aria-hidden="true">✦</span>Safe toys and enrichment items</li><li><span aria-hidden="true">▧</span>Litter and everyday care supplies</li></ul>
+            <p>Please contact us before arranging any contribution so we can confirm what is suitable.</p>
+          </Card>
+        </div>
+      </section>
+
+      <section aria-labelledby="home-random-friends-title" className="home-random-friends section-space">
+        <div className="container">
+          <SectionHeading
+            align="center"
+            description="A small moment of joy from around the web. These random photos are separate from our adoption listings."
+            id="home-random-friends-title"
+            title="Say hello to a random friend"
+          />
+          <div className="home-random-friends__grid" id="home-random-friends-grid">
+            <RandomPetPhoto species="dog" />
+            <RandomPetPhoto species="cat" />
+            {showMoreFriends && <RandomPetPhoto key="extra-dog" species="dog" />}
+            {showMoreFriends && <RandomPetPhoto key="extra-cat" species="cat" />}
+          </div>
+          <div className="home-random-friends__more">
+            <Button aria-controls="home-random-friends-grid" aria-expanded={showMoreFriends} onClick={() => setShowMoreFriends((current) => !current)} variant="outline">
+              {showMoreFriends ? 'Show fewer friends' : 'Show more friends'}
+            </Button>
+          </div>
         </div>
       </section>
 

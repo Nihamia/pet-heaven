@@ -11,6 +11,8 @@ import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import usePets from '../hooks/usePets.js';
+import PageBanner from '../components/ui/PageBanner.jsx';
+import { imageAssets } from '../data/images.js';
 
 const initialFilters = {
   species: '',
@@ -19,6 +21,7 @@ const initialFilters = {
   size: '',
   goodWithKids: '',
   vaccinated: '',
+  hdbFriendly: '',
   onlyFavourites: false,
   sortBy: 'newest',
 };
@@ -39,7 +42,7 @@ export default function PetsPage() {
   const safeRecentIds = Array.isArray(recentIds) ? recentIds : [];
   const favouriteSet = useMemo(() => new Set(safeFavouriteIds), [safeFavouriteIds]);
 
-  // Replace these placeholder links in pets.json with credited Unsplash or Pexels photos before submission.
+  // Debounce typing while keeping every sample image path and credit in the local catalogue.
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setDebouncedQuery(query.trim().toLowerCase()), 250);
     return () => window.clearTimeout(timeoutId);
@@ -65,14 +68,14 @@ export default function PetsPage() {
     const matchesFilter = (pet, key) => {
       const value = filters[key];
       if (value === '' || value === undefined) return true;
-      if (key === 'goodWithKids' || key === 'vaccinated') return String(pet[key]) === value;
+      if (['goodWithKids', 'vaccinated', 'hdbFriendly'].includes(key)) return String(pet[key]) === value;
       return String(pet[key]).toLowerCase() === String(value).toLowerCase();
     };
 
     const visiblePets = pets.filter((pet) => {
       if (pet.status !== 'Available' || !searchMatches(pet)) return false;
       if (filters.onlyFavourites && !favouriteSet.has(pet.id)) return false;
-      return ['species', 'ageGroup', 'gender', 'size', 'goodWithKids', 'vaccinated']
+      return ['species', 'ageGroup', 'gender', 'size', 'goodWithKids', 'vaccinated', 'hdbFriendly']
         .every((key) => matchesFilter(pet, key));
     });
 
@@ -82,7 +85,7 @@ export default function PetsPage() {
       if (filters.sortBy === 'oldest') return second.ageYears - first.ageYears;
       return new Date(second.dateAdded) - new Date(first.dateAdded);
     });
-  }, [debouncedQuery, filters, favouriteSet]);
+  }, [debouncedQuery, filters, favouriteSet, pets]);
 
   const recentPets = safeRecentIds
     .map((recentId) => pets.find((pet) => pet.id === recentId))
@@ -110,17 +113,19 @@ export default function PetsPage() {
   }
 
   return (
-    <div className="pets-page">
+    <div className="pets-page pets-page--banner">
+      <PageBanner breadcrumb="Available Pets" image={imageAssets.bannerPets} title="Meet your new companion" />
       <div className="container">
         <header className="pets-page__intro">
           <SectionHeading
-            as="h1"
+            as="h2"
             description="Every animal has a story and a personality of their own. Browse the profiles and find a companion whose needs and nature feel right for your home."
             eyebrow="Meet your new friend"
             id="pets-page-title"
             title="A loving home starts with a hello."
           />
           <Badge tone="teal">{pets.length} pet profiles</Badge>
+          <p className="pet-housing-note">HDB-friendly labels are illustrative coursework information. Confirm housing eligibility and individual care needs before adopting.</p>
         </header>
 
         <Card as="section" className="pet-search-panel" padding="large">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
+import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -75,7 +76,7 @@ export default function ContactPage() {
         </Card>
         <Card className="contact-info-card" padding="medium">
           <span aria-hidden="true" className="contact-info-card__icon">✉</span>
-          <div><p className="eyebrow">Email</p><h2><a href="mailto:hello@petheaven.example">hello@petheaven.example</a></h2><p>Sample address for this project.</p></div>
+          <div><p className="eyebrow">Email</p><h2><a href="#contact-form">hello@petheaven.example</a></h2><p>Sample address for this project.</p></div>
         </Card>
         <Card className="contact-info-card" padding="medium">
           <span aria-hidden="true" className="contact-info-card__icon">◷</span>
@@ -93,7 +94,7 @@ export default function ContactPage() {
               If your question needs a quick response, contact the administrator directly after configuring the sample email service.
             </Alert>
           )}
-          <form className="service-form" noValidate onSubmit={form.handleSubmit(submitContact)}>
+          <form className="service-form" id="contact-form" noValidate onSubmit={form.handleSubmit(submitContact)}>
             <FormField autoComplete="name" error={fieldError('name')} label="Your name" name="name" onBlur={form.handleBlur} onChange={form.handleChange} required value={form.values.name} />
             <FormField autoComplete="email" error={fieldError('email')} label="Email address" name="email" onBlur={form.handleBlur} onChange={form.handleChange} required type="email" value={form.values.email} />
             <FormField autoComplete="tel" error={fieldError('phone')} hint="Optional. If entered, use a Singapore number." label="Phone number" name="phone" onBlur={form.handleBlur} onChange={form.handleChange} type="tel" value={form.values.phone} />
@@ -104,8 +105,23 @@ export default function ContactPage() {
         </Card>
 
         <aside className="contact-side">
+          <FormGuide
+            as="section"
+            eyebrow="Getting in touch"
+            title="A clear route to the team"
+            steps={[
+              { title: 'Send your question', text: 'A clear subject helps explain the information or support you need.' },
+              { title: 'Keep your reference', text: 'The feedback after sending includes a reference for your message.' },
+              { title: 'Follow up if needed', text: 'Use that reference if you contact the team again about the same question.' },
+            ]}
+          >
+            <p>For a specific pet, start with their profile and the adoption enquiry so the team has the relevant details.</p>
+            <Button size="small" to="/pets" variant="outline">Browse available pets</Button>
+          </FormGuide>
           <Card className="contact-map-card" padding="none">
             <iframe
+              height="450"
+              width="600"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               src="https://www.google.com/maps?q=Central%20Singapore&output=embed"
@@ -113,10 +129,10 @@ export default function ContactPage() {
             />
             <div className="contact-map-card__caption"><span className="eyebrow">Find us</span><p>Central Singapore (sample location)</p></div>
           </Card>
-          <Card className="contact-social-card" padding="large">
+          <Card className="contact-social-card" id="social-channels" padding="large">
             <p className="eyebrow">Stay connected</p>
             <h2>Follow along</h2>
-            <p>Sample links below go to the social platforms. Replace them with official Pet Heaven accounts.</p>
+            <p>Pet Heaven is a coursework society and has no official social accounts. These links open the platforms themselves; use the contact form for this project.</p>
             <ul>
               {socialLinks.map((social) => (
                 <li key={social.label}><a href={social.href} rel="noreferrer" target="_blank">{social.label}<span aria-hidden="true">↗</span></a></li>

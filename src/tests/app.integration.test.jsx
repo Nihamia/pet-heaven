@@ -37,7 +37,8 @@ describe('Pet Heaven user journeys', () => {
     const user = userEvent.setup();
     renderAt('/');
     await openMobileNavigation(user);
-    await user.click(screen.getByRole('link', { name: 'About' }));
+    await user.click(screen.getByRole('button', { name: 'About' }));
+    await user.click(screen.getByRole('link', { name: 'Our Story' }));
 
     expect(await screen.findByRole('heading', { name: 'A little care can change a whole life.' })).toBeInTheDocument();
     expect(document.title).toBe('About us | Pet Heaven');
