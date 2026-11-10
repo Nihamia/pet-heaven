@@ -13,7 +13,7 @@ export default function PetCard({ pet, isFavourite, onToggleFavourite }) {
     <Card as="article" className="pet-card" interactive padding="none">
       <div className="pet-card__image-wrap">
         <FallbackImage
-          alt={image?.alt ?? `${pet.name}, a ${pet.gender.toLowerCase()} ${pet.species.toLowerCase()} looking for a home`}
+          alt={pet.imageAlt || image?.alt || `${pet.name}, a ${pet.gender.toLowerCase()} ${pet.species.toLowerCase()} looking for a home`}
           className="pet-card__image"
           loading="lazy"
           decoding="async"
@@ -40,7 +40,7 @@ export default function PetCard({ pet, isFavourite, onToggleFavourite }) {
         <p className="pet-card__breed">{pet.breed}</p>
 
         <dl className="pet-card__facts">
-          <div><dt>Age</dt><dd>{formatPetAge(pet.ageYears)}</dd></div>
+          <div><dt>Age</dt><dd>{formatPetAge(pet.ageYears, pet.ageMonths)}</dd></div>
           <div><dt>Gender</dt><dd>{pet.gender}</dd></div>
           <div><dt>Size</dt><dd>{pet.size}</dd></div>
           <div><dt>HDB-friendly</dt><dd>{typeof pet.hdbFriendly === 'boolean' ? (pet.hdbFriendly ? 'Yes' : 'No') : 'Not assessed'}</dd></div>
@@ -50,9 +50,14 @@ export default function PetCard({ pet, isFavourite, onToggleFavourite }) {
           {pet.temperament.slice(0, 2).map((trait) => <li key={trait}>{trait}</li>)}
         </ul>
 
-        <Button className="pet-card__details" size="small" to={`/pets/${pet.id}`} variant="outline">
-          View details <span aria-hidden="true">→</span>
-        </Button>
+        <div className="pet-card-actions">
+          <Button className="pet-card__details" size="small" to={`/pets/${pet.id}`} variant="outline">
+            View details <span aria-hidden="true">→</span>
+          </Button>
+          <Button disabled={pet.status !== 'Available'} size="small" to={pet.status === 'Available' ? `/adopt?${new URLSearchParams({ petId: pet.id })}` : undefined}>
+            {pet.status === 'Available' ? 'Adopt me' : 'Not available'}
+          </Button>
+        </div>
       </div>
     </Card>
   );

@@ -199,7 +199,7 @@ describe('Charity website design interactions', () => {
     const milo = fallbackPets.find((pet) => pet.id === 'milo');
     expect(dialog.getAllByRole('button', { name: /Show Milo photo/ })).toHaveLength(milo.gallery.length);
     expect(document.querySelector('.pet-detail__main-image')).toHaveAttribute('src', milo.image);
-    await user.click(dialog.getByRole('link', { name: /adopt/i }));
+    await user.click(dialog.getByRole('link', { name: 'Ask to adopt Milo' }));
     const loginForm = within(await screen.findByRole('main'));
     await user.type(await loginForm.findByLabelText(/Email address/), mockUser.email);
     await user.type(loginForm.getByLabelText(/^Password/), 'GoodPass1!');

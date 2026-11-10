@@ -11,7 +11,7 @@ import Card from '../components/ui/Card.jsx';
 import Modal from '../components/ui/Modal.jsx';
 import { Spinner } from '../components/ui/Spinner.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { roles } from '../data/roles.js';
+import { getMemberRoles, requiredRoleMessage, roles } from '../data/roles.js';
 import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import useForm from '../hooks/useForm.js';
 import { logout } from '../services/authService.js';
@@ -39,7 +39,7 @@ function displayDate(value) {
 }
 
 function MembershipCard({ member }) {
-  const selectedRoles = roles.filter(({ id }) => member.roles?.includes(id));
+  const selectedRoles = getMemberRoles(member.roles);
   return (
     <Card aria-labelledby="member-card-title" as="section" className="member-print-card" padding="large">
       <div className="member-heading-row">
@@ -65,16 +65,17 @@ function validateDetails(values) {
     fullName: required(values.fullName, 'Full name') || minLength(values.fullName.trim(), 2) || maxLength(values.fullName, 120),
     phone: required(values.phone, 'Phone number') || singaporePhone(values.phone) || maxLength(values.phone, 32),
     address: required(values.address, 'Home address') || minLength(values.address.trim(), 8) || maxLength(values.address, 240),
-    roles: roles.some(({ id }) => values[id]) ? '' : 'Choose at least one way to get involved.',
+    roles: roles.some(({ id }) => values[id]) ? '' : requiredRoleMessage,
   };
 }
 
 function EditDetails({ member, uid, onClose, onSaved, refreshMember }) {
+  const selected = getMemberRoles(member.roles);
   const initialValues = {
     fullName: member.fullName,
     phone: member.phone,
     address: member.address,
-    ...Object.fromEntries(roles.map(({ id }) => [id, member.roles?.includes(id) ?? false])),
+    ...Object.fromEntries(roles.map((role) => [role.id, selected.includes(role)])),
   };
   const form = useForm({ initialValues, validate: validateDetails });
   const fieldError = (name) => (form.touched[name] ? form.errors[name] : '');
@@ -175,7 +176,7 @@ function MyRequests({ uid }) {
             <Card as="li" key={request.referenceId}>
               <div className="member-heading-row">
                 <h3>{request.petName}</h3>
-                <Badge tone="teal">{request.status || 'Submitted'}</Badge>
+                <Badge tone="teal">{!request.status || request.status === 'Submitted' ? 'New' : request.status}</Badge>
               </div>
               <dl className="member-facts">
                 <div><dt>Reference</dt><dd>{request.referenceId}</dd></div>

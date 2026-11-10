@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App.jsx';
 import { sendFormEmails } from '../services/emailService.js';
-import { mockAuthService, mockDocuments, mockUser, resetAccountMocks } from './accountMocks.js';
+import { mockAuthService, mockDocuments, mockFirestoreSdk, mockUser, resetAccountMocks } from './accountMocks.js';
 
 vi.mock('../services/firebaseClient.js', async () => (await import('./accountMocks.js')).mockFirebaseClient);
 vi.mock('../services/authService.js', async () => (await import('./accountMocks.js')).mockAuthService);
@@ -136,7 +136,7 @@ describe('Pet Heaven user journeys', () => {
     expect(screen.getByText('Email is required.')).toBeInTheDocument();
     expect(screen.getByText('Data consent is required.')).toBeInTheDocument();
     expect(mockAuthService.register).not.toHaveBeenCalled();
-    expect(screen.getByText('Choose at least one way you would like to support the society.')).toBeInTheDocument();
+    expect(screen.getByText('Choose at least one option, or Adopter if you only want to adopt.')).toBeInTheDocument();
   });
 
   it('registers an account with the selected roles and sends the welcome emails', async () => {
@@ -157,7 +157,10 @@ describe('Pet Heaven user journeys', () => {
       status: 'Active',
       roles: ['volunteer'],
       dataConsent: true,
-      memberId: expect.stringMatching(/^PH-\d{4}-[A-Z0-9]{4}$/),
+      memberId: expect.stringMatching(/^PH-[A-HJ-NP-Z2-9]{6}$/),
+      email: mockUser.email,
+      roleDetails: { volunteer: { volunteerDays: ['Monday'], volunteerHours: 3, volunteerSkills: 'Animal care' } },
+      updatedAt: saved.createdAt,
     });
     expect(saved).not.toHaveProperty('password');
     expect(saved).not.toHaveProperty('confirmPassword');
@@ -170,10 +173,30 @@ describe('Pet Heaven user journeys', () => {
         email: 'jamie@example.com',
         phone: '81234567',
         roles: ['volunteer'],
-        roleDetails: expect.objectContaining({ volunteerSkills: 'Animal care' }),
+        roleDetails: saved.roleDetails,
       }),
     }));
     expect(JSON.stringify(sendFormEmails.mock.calls[0][0])).not.toContain('GoodPass1!');
+  });
+
+  it('preselects and toggles the first Adopter card, then registers without extra answers', async () => {
+    renderAt('/join?role=adopter');
+    const adopter = screen.getByRole('checkbox', { name: 'Adopter' });
+    expect(within(document.getElementById('support-interests')).getAllByRole('checkbox')[0]).toBe(adopter);
+    expect(adopter).toBeChecked();
+    fireEvent.click(adopter);
+    expect(adopter).not.toBeChecked();
+    fireEvent.click(adopter);
+    expect(adopter).toBeChecked();
+    expect(screen.queryByRole('group', { name: /Adopter details/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Hours per week|Housing type|Pledge type/)).not.toBeInTheDocument();
+    fillJoinIdentity();
+    fireEvent.click(screen.getByLabelText(/I confirm that I am at least 18 years old/));
+    fireEvent.click(screen.getByLabelText(/I agree to the use of my information/));
+    fireEvent.click(screen.getByRole('button', { name: 'Join the community' }));
+    expect(await screen.findByRole('heading', { name: /My Membership/i, level: 1 })).toBeInTheDocument();
+    expect(mockDocuments.get('members/' + mockUser.uid)).toMatchObject({ roles: ['adopter'], roleDetails: {} });
+    expect(within(screen.getByRole('region', { name: 'Membership card' })).getByText('Adopter')).toBeInTheDocument();
   });
 
   it('redirects a signed-out visitor from the adoption application and offers registration', async () => {
@@ -181,7 +204,7 @@ describe('Pet Heaven user journeys', () => {
 
     const main = within(await screen.findByRole('main'));
     expect(await main.findByRole('button', { name: 'Log in' })).toBeInTheDocument();
-    expect(main.getByRole('link', { name: /Join/i })).toHaveAttribute('href', '/join');
+    expect(main.getByRole('link', { name: 'Become a member to adopt' })).toHaveAttribute('href', '/join?role=adopter');
     expect(screen.queryByLabelText('Pet you would like to meet')).not.toBeInTheDocument();
   });
 
@@ -207,7 +230,7 @@ describe('Pet Heaven user journeys', () => {
     await user.click(screen.getByRole('button', { name: 'Send message' }));
 
     expect(await screen.findByText('Your form has been sent.')).toBeInTheDocument();
-    expect(JSON.parse(window.localStorage.getItem('pet-heaven-contact_messages'))[0].name).toBe('Alex Lim');
+    expect(JSON.parse(window.localStorage.getItem('pet-heaven-contact_messages'))[0]).toMatchObject({ name: 'Alex Lim', status: 'New', type: 'contact' });
   });
 
   it('retries a failed Contact email with the original reference and one saved record', async () => {
@@ -252,6 +275,11 @@ describe('Pet Heaven user journeys', () => {
     expect(await screen.findByText('Your form has been sent.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Retry email' })).toBeNull();
     expect(JSON.parse(window.localStorage.getItem('pet-heaven-contact_messages'))).toEqual(stored);
+    expect(mockFirestoreSdk.addDoc).toHaveBeenCalledTimes(1);
+    expect(mockFirestoreSdk.addDoc).toHaveBeenCalledWith('contact_messages', expect.objectContaining({
+      referenceId: stored[0].referenceId,
+      status: 'New',
+    }));
   });
 
   it('reports acknowledgement failure after the administrator email succeeds', async () => {

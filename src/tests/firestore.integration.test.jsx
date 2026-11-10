@@ -5,7 +5,7 @@ import App from '../App.jsx';
 import { getAdoptionRequests, saveSubmission } from '../services/dataService.js';
 import { sendFormEmails } from '../services/emailService.js';
 import { getPetRecords } from '../services/petService.js';
-import { mockDocuments, mockFirestoreSdk, mockMember, mockUser, resetAccountMocks } from './accountMocks.js';
+import { mockDocuments, mockFirestoreSdk, mockMember, mockUser, resetAccountMocks, seedSignedInMember } from './accountMocks.js';
 
 vi.mock('../services/firebaseClient.js', async () => (await import('./accountMocks.js')).mockFirebaseClient);
 vi.mock('../services/authService.js', async () => (await import('./accountMocks.js')).mockAuthService);
@@ -29,6 +29,20 @@ function futureDate() {
 
 function fillField(scope, label, value) {
   fireEvent.change(scope.getByLabelText(label), { target: { value } });
+}
+
+function fillApplication(application) {
+  fillField(application, /Housing type/, 'Condominium');
+  fillField(application, /Do you own or rent/, 'own');
+  fillField(application, /Who lives in your household/, 'Two adults');
+  fillField(application, /Your pet care experience/, 'I have cared for a family dog for several years.');
+  fillField(application, /Typical work or study schedule/, 'mostly-home');
+  fillField(application, /Why would you like to adopt/, 'I can offer a stable home and daily care for Milo.');
+  fireEvent.click(application.getByLabelText(/I am ready to care/));
+  fireEvent.click(application.getByLabelText(/I can plan for everyday/));
+  fireEvent.click(application.getByLabelText(/I agree to an adoption conversation/));
+  fillField(application, /Preferred interview date/, futureDate());
+  fillField(application, /Preferred time/, '10:00');
 }
 
 describe('Firestore accounts and fallback', () => {
@@ -55,17 +69,7 @@ describe('Firestore accounts and fallback', () => {
     expect(application.getByLabelText('Email address')).toHaveAttribute('readonly');
     expect(application.getByLabelText(/Pet you would like to meet/)).toHaveValue('milo');
 
-    fillField(application, /Housing type/, 'Condominium');
-    fillField(application, /Do you own or rent/, 'own');
-    fillField(application, /Who lives in your household/, 'Two adults');
-    fillField(application, /Your pet care experience/, 'I have cared for a family dog for several years.');
-    fillField(application, /Typical work or study schedule/, 'mostly-home');
-    fillField(application, /Why would you like to adopt/, 'I can offer a stable home and daily care for Milo.');
-    fireEvent.click(application.getByLabelText(/I am ready to care/));
-    fireEvent.click(application.getByLabelText(/I can plan for everyday/));
-    fireEvent.click(application.getByLabelText(/I agree to an adoption conversation/));
-    fillField(application, /Preferred interview date/, futureDate());
-    fillField(application, /Preferred time/, '10:00');
+    fillApplication(application);
     fireEvent.click(application.getByRole('button', { name: 'Review my enquiry' }));
     expect(application.getByRole('heading', { name: 'Check your enquiry before sending.' })).toBeInTheDocument();
     fireEvent.click(await application.findByRole('button', { name: 'Confirm and send enquiry' }));
@@ -84,6 +88,34 @@ describe('Firestore accounts and fallback', () => {
       formType: 'adopt',
       data: expect.objectContaining({ applicantName: mockMember.fullName, email: mockUser.email }),
     }));
+  }, 10_000);
+
+  it.each(['before write', 'during write', 'unknown'])('handles unavailable or permission-denied adoption submission %s', async (scenario) => {
+    seedSignedInMember();
+    renderAdopt();
+    const application = within((await screen.findByLabelText(/Applicant name/)).closest('form'));
+    fillApplication(application);
+    fireEvent.click(application.getByRole('button', { name: 'Review my enquiry' }));
+    if (scenario === 'before write') {
+      mockDocuments.set('pet_availability/milo', { status: 'Reserved' });
+    } else {
+      mockFirestoreSdk.addDoc.mockImplementationOnce(async () => {
+        if (scenario === 'during write') mockDocuments.set('pet_availability/milo', { status: 'Adopted' });
+        throw Object.assign(new Error('Denied'), { code: 'permission-denied' });
+      });
+    }
+    fireEvent.click(await application.findByRole('button', { name: 'Confirm and send enquiry' }));
+
+    if (scenario === 'unknown') {
+      expect(await screen.findByRole('alert')).toHaveTextContent('The pet may no longer be available.');
+    } else {
+      const title = scenario === 'before write' ? 'This pet is currently reserved' : 'This pet has already been adopted';
+      expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('link', { name: 'Browse other pets' })).toHaveAttribute('href', '/pets');
+    expect(mockFirestoreSdk.addDoc).toHaveBeenCalledTimes(scenario === 'before write' ? 0 : 1);
+    expect(sendFormEmails).not.toHaveBeenCalled();
+    expect(localStorage.getItem('pet-heaven-adoption_requests')).toBeNull();
   }, 10_000);
 
   it('returns only this account’s saved requests when Firestore is offline', async () => {

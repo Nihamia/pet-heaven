@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
@@ -7,6 +8,7 @@ import Card from '../components/ui/Card.jsx';
 import { Spinner } from '../components/ui/Spinner.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import useForm from '../hooks/useForm.js';
+import { hasStaffAccess } from '../services/adminAuthService.js';
 import { accountsAvailable, login } from '../services/authService.js';
 import { email as validateEmail, required } from '../utils/validators.js';
 
@@ -34,11 +36,30 @@ function safeReturnPath(value) {
   return '/member';
 }
 
+function LoginDestination({ uid, next }) {
+  const [isStaff, setIsStaff] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    function finish(allowed) {
+      if (active) setIsStaff(allowed);
+    }
+    hasStaffAccess(uid).then(finish, () => finish(false));
+    return () => { active = false; };
+  }, [uid]);
+
+  if (isStaff === null) {
+    return <div className="container account-loading"><Spinner label="Checking staff access" /></div>;
+  }
+  return <Navigate replace to={isStaff ? '/admin' : next} />;
+}
+
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const { user, loading, memberError } = useAuth();
   const form = useForm({ initialValues, validate: validateLogin });
   const next = safeReturnPath(searchParams.get('next'));
+  const isAdoptionLogin = next.split(/[?#]/, 1)[0].replace(/\/+$/, '').toLowerCase() === '/adopt';
   const resetLink = next === '/member' ? '/forgot-password' : `/forgot-password?next=${encodeURIComponent(next)}`;
 
   async function submit(values) {
@@ -46,7 +67,7 @@ export default function LoginPage() {
     form.reset();
   }
 
-  if (user) return <Navigate replace to={next} />;
+  if (user) return <LoginDestination key={user.uid} next={next} uid={user.uid} />;
 
   return (
     <FormPageShell className="account-page" eyebrow="Pet Heaven membership" title="Log in" description="Use your email and password to open your member area.">
@@ -61,7 +82,9 @@ export default function LoginPage() {
         ) : <Alert tone="error">Accounts are unavailable right now.</Alert>}
         <div className="account-links">
           <Link to={resetLink}>Forgot password?</Link>
-          <Link to="/join">Join Pet Heaven</Link>
+          <Link to={isAdoptionLogin ? "/join?role=adopter" : "/join"}>
+            {isAdoptionLogin ? "Become a member to adopt" : "Join Pet Heaven"}
+          </Link>
         </div>
       </Card>
     </FormPageShell>

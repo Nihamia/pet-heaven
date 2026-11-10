@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PetCard from '../components/pets/PetCard.jsx';
+import { useAdminAuth } from '../context/AdminAuthContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import PetDetailModal from '../components/pets/PetDetailModal.jsx';
 import PetFilters from '../components/pets/PetFilters.jsx';
+import FormField from '../components/forms/FormField.jsx';
 import SearchBar from '../components/pets/SearchBar.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Badge from '../components/ui/Badge.jsx';
@@ -11,8 +14,13 @@ import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import usePets from '../hooks/usePets.js';
+import Toast from '../components/ui/Toast.jsx';
+import { Spinner } from '../components/ui/Spinner.jsx';
+import { isUnavailablePetStatus, petAgeInMonths } from '../utils/petUtils.js';
 import PageBanner from '../components/ui/PageBanner.jsx';
 import { imageAssets } from '../data/images.js';
+
+const AddPetModal = lazy(() => import('../components/pets/AddPetModal.jsx'));
 
 const initialFilters = {
   species: '',
@@ -23,14 +31,19 @@ const initialFilters = {
   vaccinated: '',
   hdbFriendly: '',
   onlyFavourites: false,
+  showUnavailable: false,
   sortBy: 'newest',
 };
 
 // Let visitors search, filter, sort, save, revisit, and learn about adoptable pets.
 export default function PetsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin } = useAdminAuth({ publicCheck: true });
+  const [adding, setAdding] = useState(false);
+  const [published, setPublished] = useState('');
   const { id: petId } = useParams();
   const navigate = useNavigate();
-  const { pets, message: petLoadMessage } = usePets();
+  const { pets, message: petLoadMessage, isLoading, addPublishedPet } = usePets();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filters, setFilters] = useState(initialFilters);
@@ -73,7 +86,7 @@ export default function PetsPage() {
     };
 
     const visiblePets = pets.filter((pet) => {
-      if (pet.status !== 'Available' || !searchMatches(pet)) return false;
+      if ((pet.status !== 'Available' && !(filters.showUnavailable && isUnavailablePetStatus(pet.status))) || !searchMatches(pet)) return false;
       if (filters.onlyFavourites && !favouriteSet.has(pet.id)) return false;
       return ['species', 'ageGroup', 'gender', 'size', 'goodWithKids', 'vaccinated', 'hdbFriendly']
         .every((key) => matchesFilter(pet, key));
@@ -81,15 +94,17 @@ export default function PetsPage() {
 
     return visiblePets.sort((first, second) => {
       if (filters.sortBy === 'name') return first.name.localeCompare(second.name);
-      if (filters.sortBy === 'youngest') return first.ageYears - second.ageYears;
-      if (filters.sortBy === 'oldest') return second.ageYears - first.ageYears;
+      if (filters.sortBy === 'youngest' || filters.sortBy === 'oldest') {
+        const difference = petAgeInMonths(first.ageYears, first.ageMonths) - petAgeInMonths(second.ageYears, second.ageMonths);
+        return filters.sortBy === 'youngest' ? difference : -difference;
+      }
       return new Date(second.dateAdded) - new Date(first.dateAdded);
     });
   }, [debouncedQuery, filters, favouriteSet, pets]);
 
   const recentPets = safeRecentIds
     .map((recentId) => pets.find((pet) => pet.id === recentId))
-    .filter(Boolean);
+    .filter((pet) => pet && (!isUnavailablePetStatus(pet.status) || filters.showUnavailable));
 
   function toggleFavourite(petIdToToggle) {
     setFavouriteIds((current) => (
@@ -106,6 +121,15 @@ export default function PetsPage() {
   function clearFilters() {
     setQuery('');
     setFilters({ ...initialFilters });
+  }
+
+  function handlePublished(pet) {
+    addPublishedPet(pet);
+    setQuery('');
+    setDebouncedQuery('');
+    setFilters({ ...initialFilters, species: pet.species });
+    setAdding(false);
+    setPublished(pet.name + ' was published.');
   }
 
   function closePetDetails() {
@@ -130,12 +154,14 @@ export default function PetsPage() {
 
         <Card as="section" className="pet-search-panel" padding="large">
           <SearchBar onChange={setQuery} onClear={() => setQuery('')} value={query} />
-          <PetFilters filters={filters} onChange={updateFilter} onClear={clearFilters} />
+          <PetFilters filters={filters} onChange={updateFilter} onClear={clearFilters}
+            addPetAction={isAdmin && !isLoading ? <Button onClick={() => setAdding(true)} size="small" type="button">+ Add pet</Button> : null} />
+          <FormField checked={filters.showUnavailable} label="Show reserved and adopted pets" name="showUnavailable" onChange={(event) => updateFilter('showUnavailable', event.target.checked)} type="checkbox" />
         </Card>
 
         {petLoadMessage && <Alert className="pets-page__alert" tone="warning">{petLoadMessage}</Alert>}
 
-        {petId && !selectedPet && (
+        {petId && !selectedPet && !isLoading && (
           <Alert className="pets-page__alert" tone="warning" title="We couldn't find that pet">
             This profile may have moved. You can browse the current adoption gallery below.
           </Alert>
@@ -169,7 +195,7 @@ export default function PetsPage() {
               <h2 id="pet-results-title">Pets looking for a home</h2>
             </div>
             <p aria-live="polite" className="pet-results-count" role="status">
-              Showing <strong>{filteredPets.length}</strong> of {pets.length} pets
+              Showing <strong>{filteredPets.length}</strong> of {pets.filter((pet) => pet.status === 'Available' || (filters.showUnavailable && isUnavailablePetStatus(pet.status))).length} pets
             </p>
           </div>
 
@@ -198,11 +224,18 @@ export default function PetsPage() {
         </section>
       </div>
 
+      {isAdmin && adding && (
+        <Suspense fallback={<Spinner label="Loading pet editor" />}>
+          <AddPetModal onClose={() => setAdding(false)} onSaved={handlePublished} species={filters.species} uid={user.uid} />
+        </Suspense>
+      )}
+      {isAdmin && published && <Toast onDismiss={() => setPublished('')} tone="success">{published}</Toast>}
       <PetDetailModal
         isFavourite={selectedPet ? favouriteSet.has(selectedPet.id) : false}
         onClose={closePetDetails}
         onToggleFavourite={toggleFavourite}
         pet={selectedPet}
+        showJoinLink={!user && !authLoading}
       />
     </div>
   );

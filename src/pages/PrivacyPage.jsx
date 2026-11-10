@@ -13,7 +13,7 @@ export default function PrivacyPage() {
           <p>The registration, adoption, release, contact, and newsletter forms collect the details you choose to enter. The browser stores favourites, drafts, newsletter interest and copies of submitted requests.</p>
           <h2>Accounts and connected services</h2>
           <p>Firebase Authentication handles your email and password and keeps you signed in on this browser. Firestore stores your member profile and adoption requests under your account, so you can view them after signing in on another device. When configured, Firestore also stores release and contact submissions.</p>
-          <p>When EmailJS is connected, it sends the submitted details to the administrator and sends a reference and next steps to the address you provide. Registration role answers and the release urgency flag go in the administrator email. Your password is used only for Firebase Authentication.</p>
+          <p>When EmailJS is connected, it sends the submitted details to the administrator and sends a reference and next steps to the address you provide. Registration role answers are saved in your private member profile. The urgency flag is saved with the release request. Both are included in the administrator email when relevant. Your password is used only for Firebase Authentication.</p>
           <p>The release photo preview stays in the browser. The email includes the filename and size. Footer newsletter interest is saved in this browser.</p>
           <h2>Managing browser data</h2>
           <p>Sign out from the member menu. Clear this site's storage in your browser settings to remove local form copies, favourites and drafts. Records already sent to a connected service are managed there.</p>

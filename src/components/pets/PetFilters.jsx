@@ -13,13 +13,12 @@ function selectOptions(values) {
 }
 
 // Gather the adoption gallery's species, age, household, vaccination, and sort filters.
-export default function PetFilters({ filters, onChange, onClear }) {
+export default function PetFilters({ filters, onChange, onClear, addPetAction }) {
   return (
     <section aria-label="Filter and sort adoptable pets" className="pet-filters">
       <div className="pet-filters__grid">
         {Object.entries(filterOptions).map(([name, options]) => (
-          <FormField
-            key={name}
+          <div className="pet-filter-control" key={name}><FormField
             label={name === 'ageGroup' ? 'Age group' : name.charAt(0).toUpperCase() + name.slice(1)}
             name={name}
             onChange={(event) => onChange(name, event.target.value)}
@@ -27,7 +26,7 @@ export default function PetFilters({ filters, onChange, onClear }) {
             placeholder="All"
             type="select"
             value={filters[name]}
-          />
+          />{name === 'species' && addPetAction}</div>
         ))}
         <FormField
           label="Good with children"

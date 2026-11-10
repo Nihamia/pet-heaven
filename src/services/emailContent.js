@@ -1,4 +1,4 @@
-import { roles } from '../data/roles.js';
+import { getMemberRoles, roles } from '../data/roles.js';
 
 const workSchedules = {
   'mostly-home': 'Mostly at home',
@@ -32,7 +32,7 @@ function subjectText(value) {
 
 export function buildContactEmail(data, reference) {
   return {
-    subject: `[Pet Heaven] New contact message ${reference}: ${subjectText(data.subject)}`,
+    subject: `[Pet Heaven] Message ${reference}: ${subjectText(data.subject)}`,
     adminRows: [
       section('Contact details', [['Name', data.name], ['Email', data.email], ['Phone', data.phone]]),
       section('Message', [['Subject', data.subject], ['Message', data.message]]),
@@ -46,11 +46,12 @@ export function buildContactEmail(data, reference) {
 }
 
 export function buildJoinEmail(data, reference) {
-  const roleIds = Array.isArray(data.roles) ? data.roles : [];
-  const selectedRoles = roles.filter((role) => roleIds.includes(role.id));
-  const roleLabels = selectedRoles.map((role) => role.emailLabel);
+  const selectedRoles = getMemberRoles(data.roles);
+  const orderedRoles = roles.filter((role) => selectedRoles.includes(role));
+  const roleLabels = orderedRoles.map((role) => role.emailLabel);
+  const includesAdopter = orderedRoles.some(({ id }) => id === 'adopter');
   return {
-    subject: `[Pet Heaven] New member registration ${reference}: ${roleLabels.join(', ')}`,
+    subject: `[Pet Heaven] New member ${reference} (${roleLabels.join(', ')})`,
     adminRows: [
       section('Member details', [
         ['Member ID', reference],
@@ -63,12 +64,12 @@ export function buildJoinEmail(data, reference) {
         ['Newsletter opt-in', data.newsletter],
       ]),
       section('Support interests', [['Selected roles', roleLabels]]),
-      ...selectedRoles.map((role) => section(`${role.emailLabel} details`, role.fields.map((field) => [field.label, data.roleDetails?.[field.name]]))),
+      ...orderedRoles.filter(({ fields }) => fields.length > 0).map((role) => section(`${role.emailLabel} details`, role.fields.map((field) => [field.label, data.roleDetails?.[role.id]?.[field.name]]))),
     ],
     ackIntro: 'Welcome to Pet Heaven! We have received your membership registration.',
     nextSteps: [
-      'Log in to your member area to view your membership card and start an adoption enquiry.',
-      ...selectedRoles.map((role) => role.emailNextStep),
+      ...(!includesAdopter ? ['Log in to your member area to view your membership card and start an adoption enquiry.'] : []),
+      ...orderedRoles.flatMap((role) => role.emailNextSteps ?? [role.emailNextStep]),
     ],
   };
 }
@@ -116,7 +117,7 @@ export function buildAdoptEmail(data, reference) {
 export function buildReleaseEmail(data, reference) {
   const urgent = data.urgent === true;
   return {
-    subject: `[Pet Heaven] ${urgent ? 'URGENT ' : ''}New release request ${reference}: ${subjectText(data.petName)}`,
+    subject: `[Pet Heaven] ${urgent ? 'URGENT release request' : 'New release request'} ${reference}: ${subjectText(data.petName)}`,
     adminRows: [
       section('Owner details', [['Owner name', data.ownerName], ['Email', data.email], ['Phone', data.phone]]),
       section('Pet details', [

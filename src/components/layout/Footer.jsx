@@ -100,7 +100,7 @@ export default function Footer() {
       <div className="container footer-bottom">
         <p className="footer-coursework-note">Pet Heaven is a fictional society created for ISIT207 coursework</p>
         <p>© {new Date().getFullYear()} Pet Heaven. All paws welcome.</p>
-        <nav aria-label="Legal and image credits" className="footer-legal"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/credits">Image credits</Link></nav>
+        <nav aria-label="Legal, image credits and staff access" className="footer-legal"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/credits">Image credits</Link><Link to="/admin/login">Staff login</Link></nav>
       </div>
     </footer>
   );

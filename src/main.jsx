@@ -13,6 +13,7 @@ import './styles/polish.css';
 import './styles/images.css';
 import './styles/get-involved.css';
 import './styles/member.css';
+import './styles/admin.css';
 
 // Mount the single-page application and make browser history available to its routes.
 createRoot(document.getElementById('root')).render(

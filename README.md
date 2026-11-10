@@ -28,6 +28,7 @@ This is a university assignment project. Statistics, organisation details, stori
 | `/get-involved` | Volunteer, foster, and donor or sponsorship information |
 | `/join` | Account registration, member profile, and support roles |
 | `/login`, `/forgot-password` | Sign-in and email password reset |
+| `/admin/login`, `/admin` | Staff sign-in and protected staff landing page |
 | `/member` | Protected membership card, resources, requests and profile editing |
 | `/adopt` | Protected enquiry with profile prefill, draft, review and confirmation |
 | `/release` | Owner/pet support request with optional photo |
@@ -86,20 +87,24 @@ Join's donor, volunteer and foster answers go to the administrator. Release prev
 1. Open the existing `petheaven-b7766` project in the [Firebase Console](https://console.firebase.google.com/project/petheaven-b7766/firestore). Under **Databases & Storage → Firestore**, click **Create database**. Choose **Standard edition**, the **(default)** database and **Singapore (`asia-southeast1`)**. Select **Production mode**, then create the database. [Firebase setup guide](https://firebase.google.com/docs/firestore/quickstart) · [Firebase regions](https://firebase.google.com/docs/firestore/locations)
 2. In **Project settings → General → Your apps**, select or register your web app. Copy its SDK config values to the matching `VITE_FIREBASE_*` entries in `.env.local`.
 3. Open **Authentication → Sign-in method** and enable **Email/Password**. The site keeps sign-in state on the current browser until the member signs out. [Firebase email and password setup](https://firebase.google.com/docs/auth/web/password-auth) · [Firebase auth persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence)
-4. From the project folder, deploy the checked-in rules with the Firebase CLI and restart Vite.
+4. Build and deploy Hosting and the checked-in rules together from the project folder.
 
    ```powershell
-   firebase.cmd deploy --only firestore:rules --project petheaven-b7766
-   npm.cmd run dev
+   npm.cmd run build
+   firebase.cmd deploy --only firestore:rules,hosting --project petheaven-b7766
    ```
 
 `authService.js` sends credentials to Firebase Authentication. `memberService.js` stores the member's editable profile and display member ID in `members/{uid}`. Adoption requests include that UID and the display member ID. My Requests queries by UID and can show a matching browser copy when Firestore is unavailable. `petService.js` continues to use `pets.json` as the bundled pet fallback. Release and Contact keep their existing storage behavior.
 
-The [rules](firestore.rules) let each signed-in member access their own profile and adoption requests and update only permitted profile fields. Release and Contact accept validated public submissions, while administrator reads, request edits and client deletes are denied. [Firestore rule operations](https://firebase.google.com/docs/firestore/security/rules-structure)
+The [rules](firestore.rules) let each signed-in member access their own profile and adoption requests and update only permitted profile fields. Release and Contact accept validated public submissions. Staff allowlisted through `admins/{uid}` can read the four collections and edit workflow fields. Staff notes live in a separate, staff-only collection. Client deletes are denied. [Firestore rule operations](https://firebase.google.com/docs/firestore/security/rules-structure)
 
 The previous member IDs and email hashes were lookup records. Anyone who joined with that flow must create an account with a password. The old documents can remain in Firestore and the app's account queries use the Firebase UID.
 
 For a live check, register on a laptop, then sign in on a phone using the hosted build and the same email and password. Open an available pet, send an adoption enquiry and check My Requests on both devices. Match both emails to the reference, then sign out and verify that the Member and Adopt routes redirect to Login.
+
+## Staff access
+
+Staff sign in at `/admin/login`. Firebase Authentication verifies their credentials, and Firestore checks for `admins/{uid}` before allowing staff access. The read-only dashboard at `/admin` shows overview counts, role filters and the member, adoption, release and message lists. See the [staff setup and rules checklist](docs/staff-access.md) for account provisioning and permission checks.
 
 ## Tests
 
@@ -154,7 +159,7 @@ Firebase is one hosting choice, not a requirement of the core React application.
    firebase deploy --only firestore:rules,hosting
    ```
 
-   If you are only using Hosting and do not want to deploy Firestore rules, run `firebase deploy --only hosting` instead.
+   Deploy both targets for Phase 1. The older rules reject the new profile and request fields. Join then stops when it saves the profile, and the new requests cannot reach Firestore.
 
 The [firebase.json](firebase.json) file publishes the `dist` build folder and rewrites app routes to `/index.html`, which lets BrowserRouter routes load directly and survive refreshes. After deployment, copy the public URL into the review report. A Hosting configuration file alone does not deploy the site.
 

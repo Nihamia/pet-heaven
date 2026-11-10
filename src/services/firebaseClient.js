@@ -43,3 +43,25 @@ export function getFirestoreClient() {
   }
   return firebaseServicesPromise;
 }
+
+let adminFirestorePromise;
+
+// The staff dashboard uses the full SDK for listeners and shares the app's Auth session.
+export function getAdminFirestoreClient() {
+  if (!isFirebaseConfigured) return Promise.resolve(null);
+  if (!adminFirestorePromise) {
+    adminFirestorePromise = getFirebaseApp()
+      .then(async (app) => {
+        const { getFirestore, collection, query, orderBy, limit, onSnapshot, getDocsFromServer, doc, setDoc, runTransaction, arrayUnion } = await import('firebase/firestore');
+        return {
+          firestore: getFirestore(app),
+          firestoreSdk: { collection, query, orderBy, limit, onSnapshot, getDocsFromServer, doc, setDoc, runTransaction, arrayUnion },
+        };
+      })
+      .catch((error) => {
+        adminFirestorePromise = undefined;
+        throw error;
+      });
+  }
+  return adminFirestorePromise;
+}

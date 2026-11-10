@@ -6,23 +6,39 @@ import FallbackImage from '../ui/FallbackImage.jsx';
 import FavouriteButton from './FavouriteButton.jsx';
 import { formatPetAge } from '../../utils/petUtils.js';
 import { imageCredits } from '../../data/images.js';
+import { getStaffPetGallery } from '../../services/staffPetService.js';
 
 // Show a selected pet's full story, gallery, care notes, and adoption enquiry action.
-export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, onClose }) {
+export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, onClose, showJoinLink }) {
   const [activeImage, setActiveImage] = useState(pet?.image ?? '');
-  const gallery = pet?.gallery?.length ? pet.gallery : pet ? [pet.image] : [];
+  const [extraPhotos, setExtraPhotos] = useState(null);
+  const staffPetId = pet?.source === 'staff' ? pet.id : null;
+  const gallery = staffPetId ? [pet.image, ...(extraPhotos?.id === staffPetId ? extraPhotos.photos.map(({ src }) => src) : [])]
+    : pet?.gallery?.length ? pet.gallery : pet ? [pet.image] : [];
 
   useEffect(() => {
     setActiveImage(pet?.image ?? '');
   }, [pet?.id, pet?.image]);
 
+  useEffect(() => {
+    if (!staffPetId) return;
+    let current = true;
+    getStaffPetGallery(staffPetId).then((photos) => {
+      if (current) setExtraPhotos({ id: staffPetId, photos });
+    }, () => {
+      if (current) setExtraPhotos({ id: staffPetId, photos: [], error: true });
+    });
+    return () => { current = false; };
+  }, [staffPetId, pet?.updatedAt]);
+
   if (!pet) return null;
+  const photoAlt = (src) => src === pet.image ? pet.imageAlt : extraPhotos?.photos.find((photo) => photo.src === src)?.alt;
   const activeAsset = imageCredits.find((image) => image.path === (activeImage || pet.image));
 
   const factRows = [
     ['Species', pet.species],
     ['Breed', pet.breed],
-    ['Age', formatPetAge(pet.ageYears)],
+    ['Age', formatPetAge(pet.ageYears, pet.ageMonths)],
     ['Gender', pet.gender],
     ['Size', pet.size],
     ['Colour', pet.colour],
@@ -35,7 +51,7 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
         <div className="pet-detail__gallery">
           <div className="pet-detail__main-image-wrap">
             <FallbackImage
-              alt={activeAsset?.alt ?? `${pet.name}, a ${pet.gender.toLowerCase()} ${pet.species.toLowerCase()}`}
+              alt={photoAlt(activeImage || pet.image) || activeAsset?.alt || `${pet.name}, a ${pet.gender.toLowerCase()} ${pet.species.toLowerCase()}`}
               className="pet-detail__main-image"
               src={activeImage || pet.image}
               style={{ objectPosition: activeAsset?.objectPosition }}
@@ -48,6 +64,8 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
               petName={pet.name}
             />
           </div>
+          {staffPetId && extraPhotos?.id !== staffPetId && <p role="status">Loading extra photos…</p>}
+          {staffPetId && extraPhotos?.id === staffPetId && extraPhotos.error && <p>Extra photos are unavailable.</p>}
           <div aria-label={`${pet.name} photo gallery`} className="pet-detail__thumbnails">
             {gallery.map((image, index) => {
               const galleryAsset = imageCredits.find((asset) => asset.path === image);
@@ -60,7 +78,7 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
                   onClick={() => setActiveImage(image)}
                   type="button"
                 >
-                  <FallbackImage alt={galleryAsset?.alt ?? `${pet.name} gallery thumbnail ${index + 1}`} height={galleryAsset?.height ?? 72} src={image} style={{ objectPosition: galleryAsset?.objectPosition }} width={galleryAsset?.width ?? 96} />
+                  <FallbackImage alt={photoAlt(image) || galleryAsset?.alt || `${pet.name} gallery thumbnail ${index + 1}`} height={galleryAsset?.height ?? 72} src={image} style={{ objectPosition: galleryAsset?.objectPosition }} width={galleryAsset?.width ?? 96} />
                 </button>
               );
             })}
@@ -83,6 +101,8 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
           <div className="pet-detail__care">
             <h3>Health and care</h3>
             <p>{pet.healthNotes}</p>
+            {pet.specialNeeds && <p><strong>Special needs</strong> {pet.specialNeeds}</p>}
+            {pet.energyLevel && <p><strong>Energy level</strong> {pet.energyLevel}</p>}
             <div className="pet-detail__care-badges">
               <Badge tone={pet.vaccinated ? 'success' : 'warning'}>
                 {pet.vaccinated ? 'Vaccinated' : 'Vaccinations in progress'}
@@ -101,11 +121,15 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
 
           <div className="pet-detail__actions">
             <Button
-              to={`/adopt?${new URLSearchParams({ petId: pet.id })}`}
+              disabled={pet.status !== 'Available'}
+              to={pet.status === 'Available' ? `/adopt?${new URLSearchParams({ petId: pet.id })}` : undefined}
               variant="primary"
             >
-              Ask to adopt {pet.name}
+              {pet.status === 'Available' ? 'Ask to adopt ' + pet.name : 'Not available'}
             </Button>
+            {showJoinLink && pet.status === 'Available' && (
+              <Button to="/join?role=adopter" variant="outline">Become a member to adopt</Button>
+            )}
             <Button onClick={onClose} variant="outline">Back to pets</Button>
           </div>
         </div>

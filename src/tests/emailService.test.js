@@ -30,10 +30,9 @@ const join = {
   dataConsent: true,
   roles: ['donor', 'foster'],
   roleDetails: {
-    donorPledgeType: 'Monthly',
-    donorAmountRange: 'S$25 to S$49',
-    fosterSpace: 'A spare room with a secure door',
-    volunteerSkills: 'Unselected role detail',
+    donor: { donorPledgeType: 'Monthly', donorAmountRange: 'S$25 to S$49' },
+    foster: { fosterSpace: 'A spare room with a secure door' },
+    volunteer: { volunteerSkills: 'Unselected role detail' },
   },
   newsletter: false,
   submittedAt,
@@ -89,21 +88,42 @@ function rowText(content) {
 describe('Form email content', () => {
   it('builds a Contact subject and includes the original message in plain-text rows', () => {
     const content = buildContactEmail(contact, 'CT-2026-A123');
-    expect(content.subject).toBe('[Pet Heaven] New contact message CT-2026-A123: Adoption question');
+    expect(content.subject).toBe('[Pet Heaven] Message CT-2026-A123: Adoption question');
     expect(rowText(content)).toContain(contact.message);
     expect(content.ackIntro).toEqual(expect.any(String));
     expect(content.nextSteps.length).toBeGreaterThan(0);
   });
 
   it('includes the Join member ID and selected role details while omitting an unselected role', () => {
-    const content = buildJoinEmail(join, 'PH-2026-A123');
-    expect(content.subject).toContain('PH-2026-A123');
+    const content = buildJoinEmail(join, 'PH-ABCD23');
+    expect(content.subject).toBe('[Pet Heaven] New member PH-ABCD23 (Foster, Donor)');
     const rows = rowText(content);
-    expect(rows).toContain('Member ID: PH-2026-A123');
+    expect(rows).toContain('Member ID: PH-ABCD23');
     expect(rows).toContain('Pledge type: Monthly');
     expect(rows).toContain('Describe the space you can offer: A spare room with a secure door');
     expect(rows).not.toContain('Unselected role detail');
     expect(content.nextSteps.length).toBeGreaterThan(0);
+  });
+
+  it('includes Adopter and exactly three fixed next steps for adoption-only registration', () => {
+    const content = buildJoinEmail({ ...join, roles: ['adopter'] }, 'PH-ABCD23');
+    expect(content.subject).toBe('[Pet Heaven] New member PH-ABCD23 (Adopter)');
+    expect(rowText(content)).toContain('Selected roles: Adopter');
+    expect(content.adminRows.map(({ heading }) => heading)).toEqual(['Member details', 'Support interests']);
+    expect(content.nextSteps).toEqual([
+      'Browse available pets.',
+      'Open a pet’s profile and choose Adopt.',
+      'Staff will contact you to arrange an interview.',
+    ]);
+  });
+
+  it('combines adoption and other role steps without copying submitted text into the acknowledgement', () => {
+    const content = buildJoinEmail({ ...join, roles: ['Adopter', 'Donor', 'foster'] }, 'PH-ABCD23');
+    expect(rowText(content)).toContain('Selected roles: Adopter, Foster, Donor');
+    expect(content.nextSteps).toHaveLength(5);
+    expect(content.nextSteps[3]).toMatch(/fostering/);
+    expect(content.nextSteps[4]).toMatch(/ways to support/);
+    expect([content.ackIntro, ...content.nextSteps].join(' ')).not.toMatch(/spare room|River Valley|Unselected role detail/);
   });
 
   it('includes the pet and requested interview slot in the Adopt content', () => {
@@ -118,7 +138,7 @@ describe('Form email content', () => {
 
   it('flags an urgent Release and describes the photo by filename and size', () => {
     const content = buildReleaseEmail(release, 'RL-2026-A123');
-    expect(content.subject).toBe('[Pet Heaven] URGENT New release request RL-2026-A123: Clover');
+    expect(content.subject).toBe('[Pet Heaven] URGENT release request RL-2026-A123: Clover');
     const rows = rowText(content);
     expect(rows).toContain('clover.jpg');
     expect(rows).toContain('512');
@@ -148,7 +168,7 @@ describe('Administrator and acknowledgement email delivery', () => {
 
   it.each([
     ['contact', contact, 'CT-2026-A123', 'Normal'],
-    ['join', join, 'PH-2026-A123', 'Normal'],
+    ['join', join, 'PH-ABCD23', 'Normal'],
     ['adopt', adopt, 'AD-2026-A123', 'Normal'],
     ['release', release, 'RL-2026-A123', 'URGENT'],
   ])('sends the %s administrator email before the acknowledgement', async (formType, data, reference, priority) => {
@@ -164,7 +184,7 @@ describe('Administrator and acknowledgement email delivery', () => {
       reply_to: email,
       form_type: expect.any(String),
       reference_no: reference,
-      submitted_at: submittedAt,
+      submitted_at: '9 Nov 2026, 10:00:00 SGT',
       priority,
       details_html: expect.any(String),
     }, { publicKey: 'public_key_test' });
@@ -185,6 +205,10 @@ describe('Administrator and acknowledgement email delivery', () => {
       expect(admin.details_html).toContain('&amp; thanks.');
       expect(admin.details_html).not.toContain('<img ');
       expect(acknowledgement.summary_html).not.toContain('onerror');
+    }
+    const acknowledgementText = JSON.stringify(acknowledgement);
+    for (const answer of [contact.subject, contact.message, join.address, join.roleDetails.foster.fosterSpace, adopt.reason, release.reasonDetails]) {
+      expect(acknowledgementText).not.toContain(answer);
     }
     if (formType === 'join') {
       expect(acknowledgement.summary_html).toContain(reference);
