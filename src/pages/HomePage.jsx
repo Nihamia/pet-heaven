@@ -21,7 +21,7 @@ const actionTiles = [
   { title: 'Adopt', description: 'Find a companion. Begin a new chapter.', to: '/pets', image: homeImages.tileAdopt },
   { title: 'Release', description: 'Talk through a safe next step.', to: '/release', image: homeImages.tileRelease },
   { title: 'Join', description: 'Give your time, care, or support.', to: '/join', image: homeImages.tileJoin },
-  { title: 'Sponsor', description: 'Help make everyday care possible.', to: '/#sponsor', image: homeImages.tileSponsor },
+  { title: 'Sponsor', description: 'Help make everyday care possible.', to: '/get-involved#donate', image: homeImages.tileSponsor },
 ];
 
 const promises = [
@@ -239,7 +239,7 @@ export default function HomePage() {
           <div>
             <SectionHeading description="Help make the ordinary things possible: a nourishing meal, a clean resting place, and time to play." eyebrow="Care takes a community" id="home-support-title" title="Sponsor a little everyday comfort" />
             <p>Interested in helping a pet while they wait for a home? Tell us how you would like to support their care, and we can discuss a suitable next step.</p>
-            <div className="home-support__actions"><Button to="/join#support-interests" variant="secondary">Become a supporter</Button><Button to="/contact" variant="outline">Ask how to help</Button></div>
+            <div className="home-support__actions"><Button to="/get-involved" variant="secondary">Become a supporter</Button><Button to="/contact" variant="outline">Ask how to help</Button></div>
             <p className="home-sample-note">Information only. No payments are collected on this website.</p>
           </div>
           <Card as="aside" className="home-needs" id="things-we-need" padding="large">

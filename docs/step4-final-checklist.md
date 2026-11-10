@@ -51,25 +51,27 @@ Use sample personal details. If EmailJS is configured, use a controlled test ser
 - [ ] Try the sort options, including name and age. Reset all filters and confirm the full sample list returns.
 - [ ] Search for a value with no matches. Check the empty-state explanation and working Clear filters action.
 - [ ] Toggle a favourite, enable favourites-only, and reload in the same browser. The selection persists. Recently viewed pets appear after opening profiles.
-- [ ] Open a profile, switch gallery images, read health/temperament facts, and use its adoption action. The selected pet should carry into the adoption enquiry after member verification.
+- [ ] Open a profile, switch gallery images, read health and temperament facts, and use its adoption action while signed out. Log in and check that the selected pet carries into the enquiry.
 
 ## Join form
 
 - [ ] Submit the blank form and check required-field messages, linked error descriptions, and `aria-invalid` states.
-- [ ] Try an invalid email, an invalid Singapore phone number, a weak password, a mismatched confirmation, a short address, no interest, and no age confirmation. The form should explain the relevant problem and retain entered values.
-- [ ] Use valid sample details, a strong matching password, an interest, and the 18+ confirmation. Submit once and confirm a member ID and storage/email feedback appear.
+- [ ] Try an invalid email, an invalid Singapore phone number, a weak password, a mismatched confirmation, a short address, and missing role or consent selections. Check the messages and retained input.
+- [ ] Open each Get Involved role application link. Check the preselected card and conditional questions. Toggle a second role and try its validation.
+- [ ] Use valid sample details, a strong matching password, at least one role, the 18+ confirmation and data consent. Submit once and check the membership card and email feedback.
 - [ ] Check a second click during submission does not create a duplicate request. Saved member data and administrator email details must not contain the password or its confirmation.
-- [ ] Keep the generated member ID and email for the adoption check in the same browser.
+- [ ] Log in with the same email and password on a phone. Check the membership card, print preview, My Details and sign-out menu. Edit a profile field and reload on the other device to confirm it saved.
+- [ ] Open Forgot password and request a reset for an email address you control. Use the reset link and confirm you can sign in with the new password.
 
 ## Adopt form
 
-- [ ] Try an unknown email/member ID. The application stays blocked and a working Join link is available.
-- [ ] Verify the member created above. Check the selected pet, household fields, commitments, and guidance/progress note are displayed.
+- [ ] While signed out, open `/member` and `/adopt` directly. Both should send you to Login. Sign in and check that you return to the requested page.
+- [ ] Check the prefilled name and phone, read-only account email, selected pet, household fields, commitments and progress note.
 - [ ] Choose renting and check landlord permission appears and is required. Change back to owning and check the conditional field behaves as before.
 - [ ] Leave required answers/commitments empty, enter a short experience/reason, or select a non-future interview date. Confirm the relevant validation messages and keep the form data.
-- [ ] Enter a partial enquiry, reload, verify membership again, and check the saved draft is restored. Try Clear saved draft and confirm it clears the form draft.
+- [ ] Enter a partial enquiry, reload while signed in, and check the draft is restored for that account. Try Clear saved draft and confirm the answers reset.
 - [ ] Complete a valid enquiry using a future date/time. Open Review my enquiry, inspect the summary, use Edit answers, and verify the answers stay intact.
-- [ ] Confirm and send once. Check the reference number, storage/email feedback, and working Add to calendar link. The link prepares a calendar event; it does not confirm a shelter appointment.
+- [ ] Confirm and send once. Match the reference in both emails and in **My Requests** on the laptop and phone. Check the calendar link shows the preferred time and the email explains that staff will confirm the appointment.
 
 ## Release form
 
@@ -77,7 +79,7 @@ Use sample personal details. If EmailJS is configured, use a controlled test ser
 - [ ] Try an invalid phone, malformed email, negative pet age, and a reason explanation shorter than required. Check the messages and retained input.
 - [ ] Try a non-image file and an image at or above 2 MB if the file picker permits selection. The optional photo must be an image strictly under 2 MB. A valid small image and no photo should both be acceptable.
 - [ ] Complete valid owner/pet details and statuses, a sufficiently detailed reason, future handover date, and consent. Submit once and confirm the request reference and storage/email feedback.
-- [ ] If testing EmailJS photo attachment, verify the controlled recipient receives the configured `petPhoto` attachment. The browser-storage record contains photo metadata, not a stored photo file.
+- [ ] Verify the controlled recipient sees the photo filename and size in the admin email and that the form displays the local preview.
 
 ## Contact and newsletter
 
@@ -105,7 +107,7 @@ Use sample personal details. If EmailJS is configured, use a controlled test ser
 | Dark mode and reduced motion | | | |
 | Keyboard, navigation, links, and modal | | | |
 | Join invalid and successful submission | | | |
-| Adopt member gate, draft, review, and confirmation | | | |
+| Adopt sign-in gate, prefill, draft, review, and confirmation | | | |
 | Release validation, photo, and confirmation | | | |
 | Contact and newsletter validation/success | | | |
 | Images, credits, direct route refresh, and console | | | |

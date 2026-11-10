@@ -25,7 +25,7 @@ Suggested points to address:
 
 ### 2.1 Site structure and navigation
 
-Describe the React single-page application and its routes: Home (`/`), About (`/about`), Pets (`/pets` and `/pets/:id`), Join (`/join`), Adopt (`/adopt`), Release (`/release`), Contact (`/contact`), and a not-found route. Explain why the shared navigation, footer, route-aware page titles, and scroll-to-top behavior make the site easier to use.
+Describe the public pages for the society, pet gallery and enquiries, plus Get Involved (`/get-involved`), Join (`/join`), Login (`/login`), Forgot Password (`/forgot-password`), and the protected Member (`/member`) and Adopt (`/adopt`) routes. Explain how shared navigation, route-aware page titles and scroll behavior support these journeys.
 
 ### 2.2 Page layout and user journeys
 
@@ -34,12 +34,13 @@ Summarise the main decisions on each page:
 - **Home:** mission-led hero, clear calls to action, impact figures, adoption steps, featured pets, and support prompts.
 - **About:** purpose, facilities, adoption guidance, eligibility information, team roles, FAQs, and visit information.
 - **Pets:** search, filters, sorting, result count, cards, favourites, recently viewed pets, and a detail view that leads into adoption.
-- **Join:** membership benefits, validated registration, support interests, and a generated member reference.
-- **Adopt:** same-browser member check, pet and household questions, commitments, preferred interview time, and review step.
+- **Get Involved and Join** show role information, validated account registration and conditional role questions.
+- **Member** shows the membership card, support resources, editable details and adoption request history.
+- **Adopt** requires sign-in, prefills contact details, and offers household questions, interview preferences and a review step.
 - **Release:** non-judgemental introduction, owner and pet details, validation, and a support-request flow.
 - **Contact:** validated message form and society contact information.
 
-Insert screenshots of the pages and interactions you actually demonstrate. Suggested captions: “Home page and primary actions,” “Pet search and filters,” “Pet profile and favourite action,” “Form validation,” and “Adoption membership check.”
+Insert screenshots of the pages and interactions you demonstrate. Include the sign-in return from a pet profile, the prefilled adoption form and the member request list.
 
 ### 2.3 Visual design and accessibility
 
@@ -56,17 +57,17 @@ Add one small example from the source code or a diagram showing a page composed 
 Explain the data flow accurately for the submitted configuration:
 
 - Pet profiles are bundled in `src/data/pets.json` and remain available when Firebase is not configured or has no usable profiles.
-- Favourites, drafts, and fallback form records are saved in the visitor's browser. This supports a demo but does not synchronise data across browsers or devices.
-- When configured, Firestore can provide pet profiles and save member, adoption, release, and contact records. State whether you configured and tested it; do not imply it is active if you did not.
-- The Firestore rules allow pet-profile reads and validated form creates, while blocking client reads of member and request records. Explain that these student-project rules do not replace a full production security review.
-- EmailJS sends administrator notifications only when its service, template, and public-key values are configured. State how you tested email delivery, or clearly say that live email delivery was not configured.
+- Favourites, drafts and fallback form records stay in the visitor's browser.
+- Firebase Authentication handles account creation, sign-in and password reset. Firestore uses the account UID for profiles and adoption requests, so signed-in members can use them across devices.
+- The rules allow public pet reads and validated Release and Contact creates. Each member can read their own profile and adoption requests and update selected profile fields.
+- EmailJS sends the administrator notification and applicant acknowledgement when configured. Describe the delivery checks you performed.
 - Validation covers required fields, email, Singapore phone format, password rules, age confirmation, date selection, and relevant length/file constraints.
 
-Mention that passwords are not included in saved member records. Explain that membership verification in this demo uses the current browser's saved registration and is not secure account authentication.
+Explain that Firebase Authentication handles passwords and that Firestore profiles and form emails contain only the relevant account and enquiry details.
 
 ## 5. Testing and quality checks
 
-Record the checks you actually ran and their results. The project includes 10 Vitest and React Testing Library integration tests for navigation, pet search, species filtering, empty results, favourite persistence, join validation and success, password exclusion from saved records, blocked non-member adoption, release phone validation, and contact submission.
+Record the checks you ran and their results. Include the gallery and public forms, registration and login, signed-out route redirects, adoption prefill and My Requests.
 
 The tests mock Firebase and EmailJS, so they verify the local user journeys without sending email or writing to a live database. Add the test date and any manual browser checks you completed. Do not claim tests or device checks that you did not run.
 
@@ -88,7 +89,7 @@ Discuss relevant limitations and realistic next steps:
 - Replace sample photos with suitable credited images.
 - Add authenticated staff tools for maintaining pet records and reviewing enquiries.
 - Use a secure backend and stronger privacy/access controls before handling real personal data.
-- Verify cross-device membership and saved-form behavior if a backend is added.
+- Verify cross-device sign-in, profile changes and requests on the deployed build.
 - Configure and verify EmailJS delivery with the intended administrator template and recipient.
 - Gather feedback from users and check the site on additional browsers, screen sizes, and assistive technologies.
 

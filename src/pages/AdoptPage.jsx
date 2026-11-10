@@ -1,20 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
 import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
+import SubmissionHoneypot from '../components/forms/SubmissionHoneypot.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import useForm from '../hooks/useForm.js';
+import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import usePets from '../hooks/usePets.js';
-import { sendAdminEmail } from '../services/emailService.js';
-import { findLocalMember, saveSubmission } from '../services/dataService.js';
+import { saveSubmission } from '../services/dataService.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { isFutureDate, makeReference } from '../utils/formUtils.js';
-import { email as validateEmail, maxLength, minLength, required } from '../utils/validators.js';
+import { maxLength, minLength, required, singaporePhone } from '../utils/validators.js';
 
 function minimumFutureDate() {
   const now = new Date();
@@ -23,7 +25,10 @@ function minimumFutureDate() {
 }
 
 function validateAdoption(values) {
+  const name = values.applicantName.trim();
   const errors = {
+    applicantName: required(name, 'Applicant name') || minLength(name, 2) || maxLength(name, 120),
+    applicantPhone: singaporePhone(values.applicantPhone) || maxLength(values.applicantPhone.trim(), 32),
     petId: required(values.petId, 'Pet'),
     housingType: required(values.housingType, 'Housing type'),
     tenure: required(values.tenure, 'Ownership or rental status'),
@@ -60,21 +65,37 @@ function makeCalendarUrl(date, time, petName) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-// Check local membership, review the household details, then submit an adoption enquiry.
 export default function AdoptPage() {
+  const { user, member, memberError, refreshMember } = useAuth();
+  if (!member || member.uid !== user?.uid) {
+    return (
+      <FormPageShell eyebrow="Adoption enquiry" title="Your membership profile">
+        <Alert tone={memberError ? 'error' : 'info'}>
+          {memberError || 'Complete your member profile before submitting an adoption enquiry.'}
+        </Alert>
+        {memberError
+          ? <Button onClick={() => refreshMember()} type="button">Retry profile</Button>
+          : <Button to="/join">Complete registration</Button>}
+      </FormPageShell>
+    );
+  }
+  return <AdoptionForm key={user.uid} member={member} user={user} />;
+}
+
+// Review the signed-in member's household details, then submit an adoption enquiry.
+function AdoptionForm({ member, user }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const initialPetId = location.state?.petId ?? searchParams.get('petId') ?? '';
   const { pets, message: petLoadMessage } = usePets();
   const availablePets = pets.filter((pet) => pet.status === 'Available');
-  const [credentials, setCredentials] = useState({ email: '', memberId: '' });
-  const [memberError, setMemberError] = useState('');
-  const [verifiedMember, setVerifiedMember] = useState(null);
   const [isReviewing, setIsReviewing] = useState(false);
-  const [submission, setSubmission] = useState(null);
-  const [completed, setCompleted] = useState(false);
-  const [referenceId] = useState(() => makeReference('PH-AD'));
+  const { submission, beginSubmission, honeypotRef, deliver, retry, isRetrying } = useAdminSubmission('adopt');
+  const [interview, setInterview] = useState(null);
+  const [referenceId] = useState(() => makeReference('AD'));
   const baseInitialValues = useMemo(() => ({
+    applicantName: member.fullName,
+    applicantPhone: member.phone,
     petId: initialPetId,
     housingType: '',
     tenure: '',
@@ -89,40 +110,23 @@ export default function AdoptPage() {
     interviewConsent: false,
     preferredDate: '',
     preferredTime: '',
-  }), [initialPetId]);
-  const [draft, setDraft, removeDraft] = useLocalStorage('pet-heaven-adoption-draft', baseInitialValues);
+  }), [initialPetId, member.fullName, member.phone]);
+  const [draft, setDraft, removeDraft] = useLocalStorage(`pet-heaven-adoption-draft-${user.uid}`, null);
   const initialValues = useMemo(() => ({
     ...baseInitialValues,
     ...(draft && typeof draft === 'object' && !Array.isArray(draft) ? draft : {}),
+    applicantName: member.fullName,
+    applicantPhone: member.phone,
     petId: initialPetId || draft?.petId || baseInitialValues.petId,
-  }), [baseInitialValues, draft, initialPetId]);
+  }), [baseInitialValues, draft, initialPetId, member.fullName, member.phone]);
   const form = useForm({ initialValues, validate: validateAdoption });
   const fieldError = (name) => form.touched[name] ? form.errors[name] : '';
   const chosenPet = availablePets.find((pet) => pet.id === form.values.petId);
 
   useEffect(() => {
-    setDraft(form.values);
+    const { applicantName, applicantPhone, ...draftValues } = form.values;
+    setDraft(draftValues);
   }, [form.values, setDraft]);
-
-  function verifyMember(event) {
-    event.preventDefault();
-    setMemberError('');
-    if (!credentials.email.trim() || validateEmail(credentials.email)) {
-      setMemberError('Enter the email address used for membership.');
-      return;
-    }
-    if (!credentials.memberId.trim()) {
-      setMemberError('Enter your Pet Heaven member ID.');
-      return;
-    }
-    const member = findLocalMember(credentials.email, credentials.memberId);
-    if (!member) {
-      setVerifiedMember(null);
-      setMemberError('We could not find that membership on this browser. Join first, then use the same browser to start your enquiry.');
-      return;
-    }
-    setVerifiedMember(member);
-  }
 
   async function submitAdoption(values) {
     if (!isReviewing) {
@@ -130,13 +134,15 @@ export default function AdoptPage() {
       return;
     }
 
+    beginSubmission();
     const pet = availablePets.find((item) => item.id === values.petId);
     const record = {
       referenceId,
-      memberId: verifiedMember.memberId,
-      applicantName: verifiedMember.fullName,
-      email: verifiedMember.email,
-      phone: verifiedMember.phone,
+      userId: user.uid,
+      memberId: member.memberId,
+      applicantName: values.applicantName.trim(),
+      email: user.email,
+      phone: values.applicantPhone.trim(),
       petId: values.petId,
       petName: pet?.name ?? 'Selected pet',
       housingType: values.housingType,
@@ -152,21 +158,12 @@ export default function AdoptPage() {
       interviewConsent: values.interviewConsent,
       preferredDate: values.preferredDate,
       preferredTime: values.preferredTime,
+      status: 'Submitted',
     };
     const saved = await saveSubmission('adoption_requests', record);
-    const email = await sendAdminEmail({
-      form_type: 'Pet adoption enquiry',
-      reference_id: referenceId,
-      from_name: record.applicantName,
-      reply_to: record.email,
-      member_id: record.memberId,
-      pet_name: record.petName,
-      message: record.reason,
-      details: JSON.stringify(record, null, 2),
-    });
+    setInterview({ date: record.preferredDate, time: record.preferredTime, petName: record.petName });
+    await deliver(saved, record, referenceId);
     removeDraft();
-    setSubmission({ saved, email });
-    setCompleted(true);
   }
 
   const handleFieldChange = (event) => {
@@ -174,24 +171,25 @@ export default function AdoptPage() {
     form.handleChange(event);
   };
 
-  if (completed) {
-    const selectedPet = pets.find((pet) => pet.id === form.values.petId);
-    const calendarUrl = makeCalendarUrl(form.values.preferredDate, form.values.preferredTime, selectedPet?.name);
+  if (submission) {
+    const emailSent = submission.email.sent;
+    const calendarUrl = makeCalendarUrl(interview.date, interview.time, interview.petName);
     return (
       <FormPageShell
         className="adopt-page"
         description="Thank you for taking time to think about the home you can offer."
-        eyebrow="Enquiry received"
-        title="A thoughtful match starts with a conversation."
+        eyebrow={emailSent ? 'Enquiry received' : 'Enquiry saved'}
+        title={emailSent ? 'A thoughtful match starts with a conversation.' : 'Your enquiry is saved.'}
       >
         <Card className="form-success-card" padding="large">
-          <span aria-hidden="true" className="form-success-card__mark">♡</span>
+          {emailSent && <span aria-hidden="true" className="form-success-card__mark">♡</span>}
           <h2>Your enquiry reference</h2>
           <p className="form-success-card__reference">{referenceId}</p>
           <p>We have recorded your preferred interview time. The team will confirm it with you before the appointment.</p>
-          <SubmissionFeedback referenceId={referenceId} result={submission} />
+          <SubmissionFeedback isRetrying={isRetrying} onRetry={retry} result={submission} />
           <div className="service-form__actions">
-            <Button href={calendarUrl} rel="noreferrer" target="_blank" variant="outline">Add to calendar <span aria-hidden="true">↗</span></Button>
+            {emailSent && <Button href={calendarUrl} rel="noreferrer" target="_blank" variant="outline">Add to calendar <span aria-hidden="true">↗</span></Button>}
+            <Button to="/member#requests" variant="outline">View my requests</Button>
             <Button to="/pets">Back to pets</Button>
           </div>
         </Card>
@@ -202,33 +200,23 @@ export default function AdoptPage() {
   return (
     <FormPageShell
       className="adopt-page"
-      description="Adoption enquiries are open to registered members. Verify your membership, then tell us about the home you can offer."
+      description="Check your contact details, then tell us about the home you can offer."
       eyebrow="Adoption enquiry"
       title="Tell us about the home you can offer."
     >
       <div className="service-page__columns service-page__columns--form">
         <div className="service-main">
       {petLoadMessage && <Alert className="service-page__notice" tone="warning">{petLoadMessage}</Alert>}
-      <Card className="member-check-card" padding="large">
-        <div>
-          <p className="eyebrow">Step 1 · member check</p>
-          <h2>Are you a Pet Heaven member?</h2>
-          <p>Enter the email and member ID from your registration. This student demo checks membership saved in the same browser.</p>
-        </div>
-        <form className="member-check-form" onSubmit={verifyMember}>
-          <FormField autoComplete="email" label="Membership email" name="memberEmail" onChange={(event) => setCredentials((current) => ({ ...current, email: event.target.value }))} required type="email" value={credentials.email} />
-          <FormField label="Member ID" name="memberId" onChange={(event) => setCredentials((current) => ({ ...current, memberId: event.target.value }))} required value={credentials.memberId} />
-          <Button type="submit">Verify membership</Button>
-        </form>
-        {memberError && <Alert className="member-check-card__alert" tone="warning">{memberError} <Link to="/join">Join Pet Heaven</Link>.</Alert>}
-        {verifiedMember && <Alert className="member-check-card__alert" tone="success">Welcome back, {verifiedMember.fullName}. You can continue with your enquiry.</Alert>}
-      </Card>
-
-      {verifiedMember && (
         <Card className="service-form-card adopt-application-card" padding="large">
-          <SectionHeading eyebrow="Step 2 · your household" title="Let’s find a good fit." />
+          <SectionHeading eyebrow="Step 1 · your details" title="Let’s find a good fit." />
           {form.submitError && <SubmissionFeedback error={form.submitError} />}
           <form className="service-form" noValidate onSubmit={form.handleSubmit(submitAdoption)}>
+            <SubmissionHoneypot inputRef={honeypotRef} />
+            <FormField label="Email address" name="applicantEmail" readOnly type="email" value={user.email} />
+            <div className="service-form__row">
+              <FormField autoComplete="name" error={fieldError('applicantName')} label="Applicant name" name="applicantName" onBlur={form.handleBlur} onChange={handleFieldChange} required value={form.values.applicantName} />
+              <FormField autoComplete="tel" error={fieldError('applicantPhone')} hint="Use a Singapore number." label="Phone number" name="applicantPhone" onBlur={form.handleBlur} onChange={handleFieldChange} type="tel" value={form.values.applicantPhone} />
+            </div>
             <FormField error={fieldError('petId')} label="Pet you would like to meet" name="petId" onBlur={form.handleBlur} onChange={handleFieldChange} options={availablePets.map((pet) => ({ value: pet.id, label: `${pet.name} — ${pet.species}, ${pet.breed}` }))} placeholder="Choose a pet" required type="select" value={form.values.petId} />
             <div className="service-form__row">
               <FormField error={fieldError('housingType')} label="Housing type" name="housingType" onBlur={form.handleBlur} onChange={handleFieldChange} options={['HDB flat', 'Condominium', 'Landed home', 'Other'].map((value) => ({ value, label: value }))} placeholder="Choose one" required type="select" value={form.values.housingType} />
@@ -262,10 +250,10 @@ export default function AdoptPage() {
 
             {isReviewing && (
               <Card className="adopt-review" padding="medium">
-                <div className="adopt-review__heading"><div><p className="eyebrow">Step 3 · review</p><h3>Check your enquiry before sending.</h3></div><Button onClick={() => setIsReviewing(false)} size="small" type="button" variant="outline">Edit answers</Button></div>
+                <div className="adopt-review__heading"><div><p className="eyebrow">Step 2 · review</p><h3>Check your enquiry before sending.</h3></div><Button onClick={() => setIsReviewing(false)} size="small" type="button" variant="outline">Edit answers</Button></div>
                 <dl>
                   <div><dt>Pet</dt><dd>{chosenPet ? `${chosenPet.name} · ${chosenPet.species}` : 'Please choose a pet'}</dd></div>
-                  <div><dt>Applicant</dt><dd>{verifiedMember.fullName} · {verifiedMember.email}</dd></div>
+                  <div><dt>Applicant</dt><dd>{form.values.applicantName.trim()} · {user.email}</dd></div>
                   <div><dt>Home</dt><dd>{form.values.housingType} · {form.values.tenure}</dd></div>
                   <div><dt>Household</dt><dd>{form.values.householdMembers}</dd></div>
                   <div><dt>Interview preference</dt><dd>{form.values.preferredDate} at {form.values.preferredTime}</dd></div>
@@ -274,9 +262,10 @@ export default function AdoptPage() {
             )}
             <div className="service-form__actions">
               <Button className="service-form__submit" loading={form.isSubmitting} type="submit">
-                {form.isSubmitting ? 'Saving your enquiry…' : isReviewing ? 'Confirm and send enquiry' : 'Review my enquiry'}
+                {form.isSubmitting ? 'Saving and sending…' : isReviewing ? 'Confirm and send enquiry' : 'Review my enquiry'}
               </Button>
               <Button
+                disabled={form.isSubmitting}
                 onClick={() => {
                   form.reset(baseInitialValues);
                   removeDraft();
@@ -291,17 +280,15 @@ export default function AdoptPage() {
             </div>
           </form>
         </Card>
-      )}
-      <p className="service-sample-note">Membership lookup uses this browser's saved registration. A secure cross-device member check needs an authenticated backend.</p>
         </div>
         <FormGuide
           eyebrow="A thoughtful match"
           title="Your adoption journey"
-          currentStep={!verifiedMember ? 1 : isReviewing ? 3 : 2}
+          currentStep={isReviewing ? 2 : 1}
           steps={[
-            { title: 'Verify membership', text: 'Use the email and member ID from your registration in this browser.' },
-            { title: 'Share your home', text: 'Tell us about daily routines, housing, and the care you can offer.' },
+            { title: 'Share your home', text: 'Check your contact details and tell us about your household and the care you can offer.' },
             { title: 'Review your enquiry', text: 'Check your answers before sending. The confirmation includes a reference number.' },
+            { title: 'Track your request', text: 'Open My Requests in your member area to see your submission.' },
           ]}
         >
           <p>Take your time to consider the pet's needs and ask questions before you commit.</p>

@@ -1,16 +1,57 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Student-project example: validate public form creates and keep personal records unreadable.
-    // Add App Check and a trusted backend or authentication before public production use.
-    function hasFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
+    function exactFields(data, fields) {
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields);
     }
 
-    function shortString(field, maxLength) {
-      return request.resource.data[field] is string
-        && request.resource.data[field].size() > 0
-        && request.resource.data[field].size() <= maxLength;
+    function textField(field, minimum, maximum) {
+      let value = request.resource.data[field];
+      return value is string && value.size() >= minimum && value.size() <= maximum;
+    }
+
+    function emailField() {
+      return textField('email', 1, 254)
+        && request.resource.data.email.matches('[^\\s@]+@[^\\s@]+[.][^\\s@]+');
+    }
+
+    function reference(value, prefix) {
+      return value is string && value.matches(prefix + '-[0-9]{4}-[A-Z0-9]{4}');
+    }
+
+    function submittedAt(value) {
+      return value is string
+        && value.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z');
+    }
+
+    function dateField(field) {
+      let value = request.resource.data[field];
+      return value is string && value.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+    }
+
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function memberProfile(data, uid) {
+      return exactFields(data, [
+          'uid', 'memberId', 'firstName', 'fullName', 'phone', 'address',
+          'roles', 'status', 'createdAt', 'ageConfirmed', 'dataConsent', 'newsletter'
+        ])
+        && data.uid == uid
+        && reference(data.memberId, 'PH')
+        && textField('firstName', 1, 120)
+        && textField('fullName', 2, 120)
+        && textField('phone', 8, 32)
+        && textField('address', 8, 240)
+        && data.roles is list
+        && data.roles.size() >= 1 && data.roles.size() <= 3
+        && data.roles.hasOnly(['volunteer', 'foster', 'donor'])
+        && data.roles.toSet().size() == data.roles.size()
+        && data.status == 'Active'
+        && data.ageConfirmed == true && data.dataConsent == true
+        && data.newsletter is bool
+        && submittedAt(data.createdAt);
     }
 
     match /pets/{petId} {
@@ -18,43 +59,103 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /members/{memberId} {
-      allow create: if hasFields(['memberId', 'fullName', 'email', 'phone', 'createdAt'])
-        && shortString('memberId', 32)
-        && shortString('fullName', 120)
-        && shortString('email', 254)
-        && shortString('phone', 32)
-        && !request.resource.data.keys().hasAny(['password', 'confirmPassword']);
-      allow read, update, delete: if false;
+    match /members/{uid} {
+      allow get: if signedInAs(uid);
+      allow create: if signedInAs(uid) && memberProfile(request.resource.data, uid);
+      allow update: if signedInAs(uid) && memberProfile(request.resource.data, uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['firstName', 'fullName', 'phone', 'address', 'roles']);
+      allow list, delete: if false;
     }
 
     match /adoption_requests/{requestId} {
-      allow create: if hasFields(['referenceId', 'memberId', 'email', 'petId', 'reason', 'createdAt'])
-        && shortString('referenceId', 40)
-        && shortString('memberId', 32)
-        && shortString('email', 254)
-        && shortString('petId', 64)
-        && shortString('reason', 1200);
-      allow read, update, delete: if false;
+      allow create: if signedInAs(request.resource.data.userId)
+        && exactFields(request.resource.data, [
+          'referenceId', 'userId', 'memberId', 'applicantName', 'email', 'phone', 'petId', 'petName',
+          'housingType', 'tenure', 'landlordPermission', 'householdMembers', 'otherPets',
+          'experience', 'workSchedule', 'reason', 'commitmentLongTerm', 'commitmentFinancial',
+          'interviewConsent', 'preferredDate', 'preferredTime', 'status', 'createdAt'
+        ])
+        && reference(request.resource.data.referenceId, 'AD')
+        && reference(request.resource.data.memberId, 'PH')
+        && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.memberId
+          == request.resource.data.memberId
+        && textField('applicantName', 1, 120)
+        && emailField()
+        && request.resource.data.email == request.auth.token.email
+        && textField('phone', 0, 32)
+        && textField('petId', 1, 64)
+        && textField('petName', 1, 100)
+        && request.resource.data.housingType in ['HDB flat', 'Condominium', 'Landed home', 'Other']
+        && ((request.resource.data.tenure == 'own' && request.resource.data.landlordPermission == null)
+          || (request.resource.data.tenure == 'rent' && request.resource.data.landlordPermission == true))
+        && textField('householdMembers', 1, 240)
+        && textField('otherPets', 0, 600)
+        && textField('experience', 1, 1200)
+        && request.resource.data.workSchedule in ['mostly-home', 'part-time-away', 'full-time-away', 'varies']
+        && textField('reason', 1, 1200)
+        && request.resource.data.commitmentLongTerm == true
+        && request.resource.data.commitmentFinancial == true
+        && request.resource.data.interviewConsent == true
+        && dateField('preferredDate')
+        && request.resource.data.preferredTime in ['10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
+        && request.resource.data.status == 'Submitted'
+        && submittedAt(request.resource.data.createdAt);
+      allow get, list: if signedInAs(resource.data.userId);
+      allow update, delete: if false;
     }
 
     match /release_requests/{requestId} {
-      allow create: if hasFields(['referenceId', 'ownerName', 'email', 'phone', 'petName', 'reason', 'createdAt'])
-        && shortString('referenceId', 40)
-        && shortString('ownerName', 120)
-        && shortString('email', 254)
-        && shortString('phone', 32)
-        && shortString('petName', 100)
-        && shortString('reason', 1200);
+      allow create: if exactFields(request.resource.data, [
+          'referenceId', 'ownerName', 'email', 'phone', 'petName', 'petSpecies', 'petBreed',
+          'petAgeYears', 'petGender', 'petSize', 'petColour', 'vaccinated', 'sterilised',
+          'microchip', 'healthNotes', 'behaviourNotes', 'reason', 'reasonDetails', 'handoverDate',
+          'photoFileName', 'photoFileType', 'photoFileSize', 'consent', 'createdAt'
+        ])
+        && reference(request.resource.data.referenceId, 'RL')
+        && textField('ownerName', 1, 120)
+        && emailField()
+        && textField('phone', 1, 32)
+        && textField('petName', 1, 100)
+        && request.resource.data.petSpecies in ['Dog', 'Cat']
+        && textField('petBreed', 1, 100)
+        && request.resource.data.petAgeYears is number
+        && request.resource.data.petAgeYears >= 0
+        && request.resource.data.petGender in ['Female', 'Male', 'Unknown']
+        && request.resource.data.petSize in ['Small', 'Medium', 'Large']
+        && textField('petColour', 1, 100)
+        && request.resource.data.vaccinated in ['Yes', 'No', 'Not sure']
+        && request.resource.data.sterilised in ['Yes', 'No', 'Not sure']
+        && textField('microchip', 0, 100)
+        && textField('healthNotes', 0, 1500)
+        && textField('behaviourNotes', 0, 1500)
+        && request.resource.data.reason in ['housing', 'financial', 'health', 'behaviour', 'family', 'other']
+        && textField('reasonDetails', 1, 1500)
+        && dateField('handoverDate')
+        && textField('photoFileName', 0, 255)
+        && textField('photoFileType', 0, 128)
+        && request.resource.data.photoFileSize is int
+        && request.resource.data.photoFileSize >= 0
+        && request.resource.data.photoFileSize < 2097152
+        && ((request.resource.data.photoFileName == '' && request.resource.data.photoFileType == ''
+            && request.resource.data.photoFileSize == 0)
+          || (request.resource.data.photoFileName != '' && request.resource.data.photoFileType.matches('(?i)image/.*')))
+        && request.resource.data.consent == true
+        && submittedAt(request.resource.data.createdAt);
       allow read, update, delete: if false;
     }
 
     match /contact_messages/{messageId} {
-      allow create: if hasFields(['referenceId', 'name', 'email', 'message', 'createdAt'])
-        && shortString('referenceId', 40)
-        && shortString('name', 120)
-        && shortString('email', 254)
-        && shortString('message', 2000);
+      allow create: if exactFields(request.resource.data, [
+          'referenceId', 'name', 'email', 'phone', 'subject', 'message', 'createdAt'
+        ])
+        && reference(request.resource.data.referenceId, 'CT')
+        && textField('name', 1, 120)
+        && emailField()
+        && textField('phone', 0, 32)
+        && textField('subject', 1, 120)
+        && textField('message', 1, 2000)
+        && submittedAt(request.resource.data.createdAt);
       allow read, update, delete: if false;
     }
   }

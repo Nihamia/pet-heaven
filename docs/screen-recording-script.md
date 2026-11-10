@@ -30,13 +30,13 @@
 
 [Open Join Us. Submit the empty form to show validation, then enter test details, select an interest and age confirmation, and submit. Pause on the generated member ID.]
 
-“The Join page collects supporter details and at least one interest. The form gives inline messages when required information is missing or does not meet the validation rules. After a valid registration, the site displays a member ID. The demo saves the profile without saving the password. Without Firebase settings, the record is stored in this browser only; the membership check is a same-browser demo, not a secure sign-in system. EmailJS also needs its own configuration before the administrator receives a real email.”
+“The Join page creates a Firebase account and asks how the member would like to help. The volunteer, foster and donor cards reveal the questions for each role. After a valid registration, the membership page shows the member ID, roles and join date. Firebase handles the password, and EmailJS sends the administrator notification and applicant acknowledgement.”
 
 ## 3:55–4:50 — Adoption enquiry
 
-[Open Adopt a Pet from the navigation. Show the member check; optionally verify with the test member ID created moments ago. Scroll through the application fields and review step without sending a live enquiry.]
+[Open a pet's profile and follow its adoption link. Show the applicant fields and preselected pet. Scroll through the application fields and review step before sending.]
 
-“The adoption page first checks the member’s email and member ID. If the details are not found in this browser, the page explains how to join. After verification, the applicant can select a pet and describe their household, housing, care experience, and schedule. The form also asks for long-term care commitments and a preferred interview time. Before submission, a review step gives the visitor a chance to check or edit their answers.”
+“Adopt requires a signed-in member. The enquiry starts with the member’s name, account email and phone number. The applicant describes their household, housing, care experience and schedule, then chooses a preferred interview time. The review step lets them check their answers before submitting. The member can find the enquiry again in My Requests.”
 
 ## 4:50–5:30 — Release and contact
 

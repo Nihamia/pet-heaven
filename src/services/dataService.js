@@ -1,8 +1,6 @@
-import fallbackPets from '../data/pets.json';
 import { getFirestoreClient, isFirebaseConfigured } from './firebaseClient.js';
 
 const allowedCollections = new Set([
-  'members',
   'adoption_requests',
   'release_requests',
   'contact_messages',
@@ -13,7 +11,7 @@ function localStorageKey(collectionName) {
 }
 
 // Keep form feedback responsive if a configured remote service does not answer quickly.
-async function waitForRemote(promise, timeoutMs = 8000) {
+export async function waitForRemote(promise, timeoutMs = 8000) {
   let timeoutId;
   const timeout = new Promise((resolve) => {
     timeoutId = globalThis.setTimeout(() => resolve({ timedOut: true }), timeoutMs);
@@ -36,105 +34,79 @@ export function readLocalCollection(collectionName) {
   }
 }
 
-// Save a form record to Firestore when available and keep a browser copy as the offline fallback.
+// Keep one browser record per reference, even if the same record is saved again.
+export function saveBrowserRecord(collectionName, record, remoteResult = {}) {
+  const id = remoteResult.id ?? record.referenceId;
+  let browserSaved = false;
+  try {
+    const localRecords = readLocalCollection(collectionName);
+    window.localStorage.setItem(
+      localStorageKey(collectionName),
+      JSON.stringify([
+        { id, ...record },
+        ...localRecords.filter((item) => (
+          item?.referenceId !== record.referenceId || item?.userId !== record.userId
+        )),
+      ]),
+    );
+    browserSaved = true;
+  } catch {
+    if (!remoteResult.saved) throw new Error('We could not save this submission. Check browser storage and try again.');
+  }
+
+  return {
+    id,
+    createdAt: record.createdAt,
+    browserSaved,
+    storage: remoteResult.saved ? (browserSaved ? 'Firestore and this browser' : 'Firestore') : 'this browser',
+    firestoreSaved: Boolean(remoteResult.saved),
+    firestorePending: Boolean(remoteResult.timedOut),
+  };
+}
+
+// Save a request to Firestore when available and keep a browser copy for offline use.
 export async function saveSubmission(collectionName, record) {
   if (!allowedCollections.has(collectionName)) throw new Error('This submission type is not supported.');
 
   const stampedRecord = { ...record, createdAt: new Date().toISOString() };
-  let remoteId = '';
-  let remoteSaved = false;
-  let firestorePending = false;
-
+  let remoteResult;
   if (isFirebaseConfigured) {
     const remoteWrite = (async () => {
       const { firestore, firestoreSdk } = await getFirestoreClient();
       const document = await firestoreSdk.addDoc(firestoreSdk.collection(firestore, collectionName), stampedRecord);
       return { id: document.id, saved: true };
-    })().catch(() => ({ saved: false }));
-    const remoteResult = await waitForRemote(remoteWrite);
-    remoteId = remoteResult.id ?? '';
-    remoteSaved = Boolean(remoteResult.saved);
-    firestorePending = Boolean(remoteResult.timedOut);
+    })().catch((error) => ({ saved: false, code: error?.code }));
+    remoteResult = await waitForRemote(remoteWrite);
+    if (collectionName === 'adoption_requests' && ['permission-denied', 'unauthenticated'].includes(remoteResult.code)) {
+      throw new Error('Firestore could not accept this request for your account. Check that you are signed in and try again.');
+    }
   }
-
-  const localId = record.referenceId || `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  try {
-    const localRecords = readLocalCollection(collectionName);
-    window.localStorage.setItem(
-      localStorageKey(collectionName),
-    JSON.stringify([
-      { id: remoteId || localId, ...stampedRecord },
-      ...localRecords.filter((item) => item.referenceId !== record.referenceId),
-    ]),
-    );
-  } catch {
-    if (!remoteSaved) throw new Error('We could not save this submission. Check browser storage and try again.');
-  }
-
-  return {
-    id: remoteId || localId,
-    storage: remoteSaved ? 'Firestore and this browser' : 'this browser',
-    firestoreSaved: remoteSaved,
-    firestorePending,
-  };
+  return saveBrowserRecord(collectionName, stampedRecord, remoteResult);
 }
 
-// Look up a same-browser member using their email and generated member ID without storing passwords.
-export function findLocalMember(email, memberId) {
-  const normalizedEmail = String(email ?? '').trim().toLowerCase();
-  const normalizedMemberId = String(memberId ?? '').trim().toUpperCase();
-  return readLocalCollection('members').find((member) => (
-    String(member.email ?? '').trim().toLowerCase() === normalizedEmail
-    && String(member.memberId ?? '').trim().toUpperCase() === normalizedMemberId
-  )) ?? null;
-}
+export async function getAdoptionRequests(userId) {
+  if (!userId) return { records: [], source: 'local' };
 
-// Load Firestore pet profiles when configured, otherwise keep the bundled JSON profiles available.
-export async function getPetRecords() {
-  if (!isFirebaseConfigured) return { pets: fallbackPets, source: 'local', message: '' };
-
-  try {
-    const remoteRead = (async () => {
+  const localRecords = readLocalCollection('adoption_requests').filter((record) => record?.userId === userId);
+  const newestFirst = (first, second) => String(second.createdAt ?? '').localeCompare(String(first.createdAt ?? ''));
+  if (isFirebaseConfigured) {
+    const read = (async () => {
       const { firestore, firestoreSdk } = await getFirestoreClient();
-      return firestoreSdk.getDocs(firestoreSdk.collection(firestore, 'pets'));
-    })();
-    const readResult = await waitForRemote(remoteRead);
-    if (readResult.timedOut) {
+      const collection = firestoreSdk.collection(firestore, 'adoption_requests');
+      const ownRequests = firestoreSdk.query(collection, firestoreSdk.where('userId', '==', userId));
+      const snapshot = await firestoreSdk.getDocs(ownRequests);
+      return { records: snapshot.docs.map((document) => document.data()) };
+    })().catch(() => ({}));
+    const result = await waitForRemote(read);
+    if (result.records) {
+      const remoteRecords = result.records.filter((record) => record?.userId === userId);
+      const remoteReferences = new Set(remoteRecords.map(({ referenceId }) => referenceId));
+      const browserOnly = localRecords.filter(({ referenceId }) => !remoteReferences.has(referenceId));
       return {
-        pets: fallbackPets,
-        source: 'local',
-        message: 'Firestore is taking too long to respond, so sample profiles are shown for now.',
-      };
-    }
-    const snapshot = readResult;
-    if (!snapshot.empty) {
-      return {
-        pets: snapshot.docs.map((item) => ({ ...item.data(), id: item.id })),
+        records: [...remoteRecords, ...browserOnly.map((record) => ({ ...record, localOnly: true }))].sort(newestFirst),
         source: 'firestore',
-        message: '',
       };
     }
-    return {
-      pets: fallbackPets,
-      source: 'local',
-      message: 'No Firestore pet records were found yet, so sample profiles are shown.',
-    };
-  } catch {
-    return {
-      pets: fallbackPets,
-      source: 'local',
-      message: 'Pet records could not be loaded from Firestore, so sample profiles are shown.',
-    };
   }
-}
-
-// Seed the Firestore pets collection with the bundled sample profiles from a developer-only setup.
-export async function seedPetRecords() {
-  if (!isFirebaseConfigured) throw new Error('Add Firebase settings to your local environment file before seeding.');
-
-  const { firestore, firestoreSdk } = await getFirestoreClient();
-  await Promise.all(fallbackPets.map((pet) => (
-    firestoreSdk.setDoc(firestoreSdk.doc(firestore, 'pets', String(pet.id)), pet)
-  )));
-  return fallbackPets.length;
+  return { records: localRecords.sort(newestFirst), source: 'local' };
 }

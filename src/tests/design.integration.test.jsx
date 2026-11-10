@@ -1,19 +1,23 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App.jsx';
 import fallbackPets from '../data/pets.json';
 import { imageCredits } from '../data/images.js';
+import { mockDocuments, mockMember, mockUser, resetAccountMocks, seedSignedInMember } from './accountMocks.js';
 
-vi.mock('../services/firebaseClient.js', () => ({ isFirebaseConfigured: false, getFirestoreClient: vi.fn(async () => null) }));
-vi.mock('../services/emailService.js', () => ({ sendAdminEmail: vi.fn(async () => ({ sent: true, reason: '' })) }));
+vi.mock('../services/firebaseClient.js', async () => (await import('./accountMocks.js')).mockFirebaseClient);
+vi.mock('../services/authService.js', async () => (await import('./accountMocks.js')).mockAuthService);
+vi.mock('../services/emailService.js', () => ({ sendFormEmails: vi.fn(async () => ({ sent: true, acknowledgementSent: true, reason: '' })) }));
 
 function renderAt(path = '/') {
   return render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[path]}><App /></MemoryRouter>);
 }
 
 describe('Charity website design interactions', () => {
+  beforeEach(resetAccountMocks);
+
   it('opens a navigation disclosure and returns keyboard focus when Escape closes it', async () => {
     const user = userEvent.setup();
     renderAt('/contact');
@@ -90,13 +94,29 @@ describe('Charity website design interactions', () => {
     expect(document.getElementById('about-facilities-title')).toBeInTheDocument();
   });
 
-  it('follows the sponsor navigation to the Home support section and expands a news story', async () => {
+  it('links the Get Involved dropdown to the hub, role sections, and Join', async () => {
     const user = userEvent.setup();
     renderAt('/contact');
     await user.click(screen.getByRole('button', { name: 'Open navigation menu' }));
     await user.click(screen.getByRole('button', { name: 'Get Involved' }));
-    await user.click(screen.getByRole('link', { name: 'Sponsor a Pet', exact: true }));
-    expect(await screen.findByRole('heading', { name: 'Sponsor a little everyday comfort' })).toBeInTheDocument();
+    const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }));
+    const targets = [
+      ['Overview', '/get-involved'],
+      ['Volunteer', '/get-involved#volunteer'],
+      ['Foster a Pet', '/get-involved#foster'],
+      ['Donate and Sponsor', '/get-involved#donate'],
+      ['Join Us', '/join'],
+    ];
+    for (const [name, href] of targets) {
+      expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
+    }
+    await user.click(nav.getByRole('link', { name: 'Donate and Sponsor', exact: true }));
+    await waitFor(() => expect(document.getElementById('donate')).toBeInTheDocument());
+  });
+
+  it('keeps the Home support section and expandable news stories', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
     expect(document.getElementById('sponsor')).toBeInTheDocument();
     const news = screen.getAllByText('Read more', { exact: false, selector: 'summary' })[0];
     await user.click(news);
@@ -163,25 +183,27 @@ describe('Charity website design interactions', () => {
     imageCredits.forEach((asset) => expect(screen.getByText(asset.path, { exact: true })).toBeInTheDocument());
   });
 
-  it.each(['/about', '/pets', '/join', '/release', '/adopt', '/contact'])('provides a local banner, breadcrumb, and one main heading on %s', (path) => {
+  it.each(['/about', '/pets', '/join', '/release', '/adopt', '/contact', '/get-involved'])('provides a local banner, breadcrumb, and one main heading on %s', async (path) => {
+    if (path === '/adopt') seedSignedInMember();
     renderAt(path);
+    expect(await screen.findByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
     expect(document.querySelector('.page-banner img').getAttribute('src')).toMatch(/^\/images\/banners\//);
   });
 
-  it('preserves the real pet photo, details, and the preselected adoption enquiry', async () => {
-    localStorage.setItem('pet-heaven-members', JSON.stringify([{ fullName: 'Jamie Tan', email: 'jamie@example.com', memberId: 'PH-DEMO-1' }]));
+  it('returns a signed-out visitor from the pet detail to a preselected adoption after login', async () => {
+    mockDocuments.set(`members/${mockUser.uid}`, mockMember);
     const user = userEvent.setup();
     renderAt('/pets/milo');
     const dialog = within(await screen.findByRole('dialog', { name: 'Meet Milo' }));
     const milo = fallbackPets.find((pet) => pet.id === 'milo');
     expect(dialog.getAllByRole('button', { name: /Show Milo photo/ })).toHaveLength(milo.gallery.length);
     expect(document.querySelector('.pet-detail__main-image')).toHaveAttribute('src', milo.image);
-    await user.click(dialog.getByRole('link', { name: 'Ask to adopt Milo' }));
-    await user.type(screen.getByLabelText(/Membership email/), 'jamie@example.com');
-    await user.type(screen.getByLabelText(/Member ID/), 'PH-DEMO-1');
-    await user.click(screen.getByRole('button', { name: 'Verify membership' }));
+    await user.click(dialog.getByRole('link', { name: /adopt/i }));
+    const loginForm = within(await screen.findByRole('main'));
+    await user.type(await loginForm.findByLabelText(/Email address/), mockUser.email);
+    await user.type(loginForm.getByLabelText(/^Password/), 'GoodPass1!');
+    await user.click(loginForm.getByRole('button', { name: 'Log in' }));
     expect(await screen.findByLabelText(/Pet you would like to meet/)).toHaveValue('milo');
   });
 });

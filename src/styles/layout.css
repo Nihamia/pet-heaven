@@ -10,6 +10,8 @@ html { scroll-padding-top: 9rem; }
 .utility-bar__inner, .utility-bar__contact { display: flex; align-items: center; gap: var(--space-4); }
 .utility-bar__inner { min-height: 2.25rem; justify-content: space-between; }
 .utility-bar a { color: var(--color-inverse-text); text-decoration: none; }
+.utility-bar__actions { display: flex; align-items: center; gap: var(--space-4); }
+.utility-bar__login { display: none; font-weight: 700; white-space: nowrap; }
 .utility-bar__contact a { display: inline-flex; gap: var(--space-2); align-items: center; }
 .utility-bar__contact a:first-child { display: none; }
 .social-icons a { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid var(--color-white-border); border-radius: 50%; color: var(--color-inverse-text); }
@@ -27,6 +29,10 @@ html { scroll-padding-top: 9rem; }
 .dropdown-list[hidden] { display: none; }
 .dropdown-link { display: block; border-radius: var(--radius-sm); padding: var(--space-3); color: var(--color-text); text-decoration: none; font-weight: 700; font-size: .9rem; }
 .dropdown-link:hover, .dropdown-link--active { background: var(--color-surface-soft); color: var(--color-teal-dark); }
+.dropdown-action { width: 100%; border: 0; background: transparent; cursor: pointer; text-align: start; }
+.dropdown-action:disabled { cursor: wait; }
+.nav-account .dropdown-trigger { background: var(--color-surface-soft); border-radius: var(--radius-pill); }
+.nav-account__name { overflow: hidden; max-width: 12rem; text-overflow: ellipsis; white-space: nowrap; }
 .site-footer .footer-main { grid-template-columns: 1fr; }
 .footer-connect { display: grid; gap: var(--space-8); padding-block: var(--space-8); border-top: 1px solid var(--color-white-divider); }
 .footer-connect .footer-contact { max-width: 30rem; }
@@ -64,6 +70,9 @@ html { scroll-padding-top: 9rem; }
   .footer-connect { grid-template-columns: 1fr 1.25fr; gap: var(--space-16); }
 }
 @media (min-width: 75rem) {
+  .utility-bar__login { display: inline-flex; }
+  .nav-mobile-login { display: none; }
+  .nav-account .dropdown-list { right: 0; left: auto; }
   .site-header .primary-nav { max-height: none; overflow: visible; }
   .nav-dropdown { position: relative; }
   .dropdown-trigger { width: auto; }

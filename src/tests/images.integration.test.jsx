@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -12,7 +12,7 @@ import { fallbackImage, imageAssets, imageCredits, petImages } from '../data/ima
 import pets from '../data/pets.json';
 
 vi.mock('../services/firebaseClient.js', () => ({ isFirebaseConfigured: false, getFirestoreClient: vi.fn(async () => null) }));
-vi.mock('../services/emailService.js', () => ({ sendAdminEmail: vi.fn(async () => ({ sent: true, reason: '' })) }));
+vi.mock('../services/emailService.js', () => ({ sendFormEmails: vi.fn(async () => ({ sent: true, acknowledgementSent: true, reason: '' })) }));
 
 const routerFlags = { v7_startTransition: true, v7_relativeSplatPath: true };
 const unknown = 'TO BE CONFIRMED';
@@ -75,12 +75,16 @@ describe('Local photograph wiring and honest credits', () => {
 
   it('shows pending credit notices for every unconfirmed photo without invented source links', () => {
     renderAt('/credits');
+    const cards = new Map(Array.from(document.querySelectorAll('.credit-card'), (card) => [
+      card.querySelector('code')?.textContent, card,
+    ]));
+    expect(cards.size).toBe(imageCredits.length);
     for (const image of imageCredits) {
-      const card = screen.getByText(image.path, { exact: true }).closest('article');
-      expect(card).not.toBeNull();
-      expect(within(card).getByRole('img')).toHaveAttribute('src', image.path);
+      const card = cards.get(image.path);
+      expect(card).toBeDefined();
+      expect(card.querySelector('img')).toHaveAttribute('src', image.path);
       if (Object.values(image.credit).includes(unknown)) {
-        expect(within(card).getAllByText('Credits being confirmed', { exact: true }).length).toBeGreaterThan(0);
+        expect(card.querySelector('.credits-pending-note')).toHaveTextContent(/^Credits being confirmed$/);
       }
       if (image.credit.url === unknown) expect(card.querySelector('a[href^="http"]')).toBeNull();
     }

@@ -1,14 +1,15 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
 import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
+import SubmissionHoneypot from '../components/forms/SubmissionHoneypot.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import useForm from '../hooks/useForm.js';
-import { sendAdminEmail } from '../services/emailService.js';
+import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import { saveSubmission } from '../services/dataService.js';
 import { isFutureDate, makeReference } from '../utils/formUtils.js';
 import {
@@ -72,20 +73,32 @@ const initialValues = {
   reason: '',
   reasonDetails: '',
   handoverDate: '',
+  urgent: false,
   petPhoto: null,
   consent: false,
 };
 
-// Gather an owner's and pet's details with a kind tone, validation, and an optional email attachment.
+// Gather release details and preview the optional photo in the browser.
 export default function ReleasePage() {
-  const formElement = useRef(null);
-  const [submission, setSubmission] = useState(null);
-  const [completed, setCompleted] = useState(false);
-  const [referenceId] = useState(() => makeReference('PH-RL'));
+  const { submission, beginSubmission, honeypotRef, deliver, retry, isRetrying } = useAdminSubmission('release');
+  const [referenceId] = useState(() => makeReference('RL'));
+  const [photoPreview, setPhotoPreview] = useState(null);
   const form = useForm({ initialValues, validate: validateRelease });
   const fieldError = (name) => form.touched[name] ? form.errors[name] : '';
+  const selectedPhoto = form.values.petPhoto;
+
+  useEffect(() => {
+    if (!selectedPhoto || imageFile(selectedPhoto) || typeof URL.createObjectURL !== 'function') {
+      setPhotoPreview(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(selectedPhoto);
+    setPhotoPreview({ file: selectedPhoto, url });
+    return () => URL.revokeObjectURL(url);
+  }, [selectedPhoto]);
 
   async function submitRelease(values) {
+    beginSubmission();
     const photo = values.petPhoto;
     const record = {
       referenceId,
@@ -113,25 +126,25 @@ export default function ReleasePage() {
       consent: values.consent,
     };
     const saved = await saveSubmission('release_requests', record);
-    const email = await sendAdminEmail({}, formElement.current);
-    setSubmission({ saved, email });
-    setCompleted(true);
+    await deliver(saved, { ...record, urgent: values.urgent }, referenceId);
+    form.reset(initialValues);
   }
 
-  if (completed) {
+  if (submission) {
+    const emailSent = submission.email.sent;
     return (
       <FormPageShell
         className="release-page"
         description="Thank you for trusting us with a difficult conversation."
-        eyebrow="We have your request"
-        title="You and your pet deserve support."
+        eyebrow={emailSent ? 'We have your request' : 'Request saved'}
+        title={emailSent ? 'You and your pet deserve support.' : 'Your request is saved.'}
       >
         <Card className="form-success-card" padding="large">
-          <span aria-hidden="true" className="form-success-card__mark">♡</span>
+          {emailSent && <span aria-hidden="true" className="form-success-card__mark">♡</span>}
           <h2>Your request reference</h2>
           <p className="form-success-card__reference">{referenceId}</p>
           <p>Keep this reference when you speak with the team. A request is the start of a conversation; it does not commit you to a handover.</p>
-          <SubmissionFeedback referenceId={referenceId} result={submission} />
+          <SubmissionFeedback isRetrying={isRetrying} onRetry={retry} result={submission} />
           <Button to="/contact">Contact the team <span aria-hidden="true">→</span></Button>
         </Card>
       </FormPageShell>
@@ -154,11 +167,8 @@ export default function ReleasePage() {
       <Card className="service-form-card" padding="large">
         <SectionHeading eyebrow="Private, practical, and non-judgemental" title="Tell us about you and your pet." />
         {form.submitError && <SubmissionFeedback error={form.submitError} />}
-        <form className="service-form" encType="multipart/form-data" noValidate onSubmit={form.handleSubmit(submitRelease)} ref={formElement}>
-          <input name="form_type" type="hidden" value="Pet release support request" />
-          <input name="reference_id" type="hidden" value={referenceId} />
-          <input name="from_name" type="hidden" value={form.values.ownerName} />
-          <input name="reply_to" type="hidden" value={form.values.email} />
+        <form className="service-form" noValidate onSubmit={form.handleSubmit(submitRelease)}>
+          <SubmissionHoneypot inputRef={honeypotRef} />
 
           <fieldset className="service-fieldset">
             <legend>Your contact details</legend>
@@ -191,7 +201,10 @@ export default function ReleasePage() {
             <FormField error={fieldError('microchip')} label="Microchip number, if known" name="microchip" onBlur={form.handleBlur} onChange={form.handleChange} value={form.values.microchip} />
             <FormField error={fieldError('healthNotes')} label="Health notes" name="healthNotes" onBlur={form.handleBlur} onChange={form.handleChange} rows={3} type="textarea" value={form.values.healthNotes} />
             <FormField error={fieldError('behaviourNotes')} label="Behaviour and daily routine" name="behaviourNotes" onBlur={form.handleBlur} onChange={form.handleChange} rows={3} type="textarea" value={form.values.behaviourNotes} />
-            <FormField accept="image/*" error={fieldError('petPhoto')} hint="Optional. One image under 2 MB; if EmailJS is configured, it can be attached to the administrator email." label="Pet photo (optional)" name="petPhoto" onBlur={form.handleBlur} onChange={form.handleChange} type="file" />
+            <FormField accept="image/*" error={fieldError('petPhoto')} hint="Optional. Choose one image under 2 MB. The email includes its filename and size." label="Pet photo (optional)" name="petPhoto" onBlur={form.handleBlur} onChange={form.handleChange} type="file" />
+            {photoPreview && photoPreview.file === selectedPhoto && (
+              <img alt="Selected pet photo preview" className="release-photo-preview" height="240" loading="lazy" src={photoPreview.url} width="320" />
+            )}
           </fieldset>
 
           <fieldset className="service-fieldset">
@@ -206,13 +219,13 @@ export default function ReleasePage() {
             ]} placeholder="Choose one" required type="select" value={form.values.reason} />
             <FormField error={fieldError('reasonDetails')} hint="Share only what you feel comfortable sharing." label="Tell us a little more" name="reasonDetails" onBlur={form.handleBlur} onChange={form.handleChange} required rows={5} type="textarea" value={form.values.reasonDetails} />
             <FormField error={fieldError('handoverDate')} hint="This is a preference only. We will confirm availability with you." label="Preferred handover date" min={minimumFutureDate()} name="handoverDate" onBlur={form.handleBlur} onChange={form.handleChange} required type="date" value={form.values.handoverDate} />
+            <FormField checked={form.values.urgent} hint="Flags your request for the team in the email." label="Mark this request as urgent" name="urgent" onChange={form.handleChange} type="checkbox" />
           </fieldset>
 
           <FormField checked={form.values.consent} error={fieldError('consent')} label="I agree that the Pet Heaven team may contact me about this request." name="consent" onBlur={form.handleBlur} onChange={form.handleChange} required type="checkbox" />
-          <Button className="service-form__submit" loading={form.isSubmitting} type="submit">{form.isSubmitting ? 'Saving your request…' : 'Send a support request'}</Button>
+          <Button className="service-form__submit" loading={form.isSubmitting} type="submit">{form.isSubmitting ? 'Saving and sending…' : 'Send a support request'}</Button>
         </form>
       </Card>
-      <p className="service-sample-note">Your photo is sent only through the configured EmailJS template. The browser storage fallback keeps the filename and details, not the image file itself.</p>
         </div>
         <FormGuide
           eyebrow="One step at a time"

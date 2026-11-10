@@ -15,9 +15,11 @@ const linkGroups = [
     { label: 'Release a pet', to: '/release' },
   ] },
   { title: 'Get involved', links: [
+    { label: 'Overview', to: '/get-involved' },
+    { label: 'Volunteer', to: '/get-involved#volunteer' },
+    { label: 'Foster a pet', to: '/get-involved#foster' },
+    { label: 'Donate and sponsor', to: '/get-involved#donate' },
     { label: 'Join us', to: '/join' },
-    { label: 'Sponsor a pet', to: '/#sponsor' },
-    { label: 'Volunteer', to: '/join#support-interests' },
   ] },
   { title: 'Our society', links: [
     { label: 'Our story', to: '/about#about-story-title' },

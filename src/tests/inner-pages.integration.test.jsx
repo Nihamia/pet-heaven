@@ -4,14 +4,20 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App.jsx';
 import pets from '../data/pets.json';
-import { sendAdminEmail } from '../services/emailService.js';
+import { sendFormEmails } from '../services/emailService.js';
+import { mockMember, mockUser, resetAccountMocks, seedSignedInMember } from './accountMocks.js';
 
-vi.mock('../services/firebaseClient.js', () => ({ isFirebaseConfigured: false, getFirestoreClient: vi.fn(async () => null) }));
-vi.mock('../services/emailService.js', () => ({ sendAdminEmail: vi.fn(async () => ({ sent: true, reason: '' })) }));
+vi.mock('../services/firebaseClient.js', async () => (await import('./accountMocks.js')).mockFirebaseClient);
+vi.mock('../services/authService.js', async () => (await import('./accountMocks.js')).mockAuthService);
+vi.mock('../services/emailService.js', () => ({ sendFormEmails: vi.fn(async () => ({ sent: true, acknowledgementSent: true, reason: '' })) }));
 
-const routes = ['/', '/about', '/pets', '/join', '/adopt', '/release', '/contact', '/privacy', '/terms', '/credits', '/not-a-page'];
+const routes = [
+  '/', '/about', '/pets', '/join', '/adopt', '/release', '/contact', '/privacy', '/terms', '/credits',
+  '/get-involved', '/login', '/forgot-password', '/member', '/not-a-page',
+];
 
 function renderAt(path = '/') {
+  if (path === '/member' || path.startsWith('/adopt')) seedSignedInMember();
   return render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[path]}><App /></MemoryRouter>);
 }
 
@@ -26,6 +32,7 @@ describe('Polished inner pages', () => {
   let consoleWarning;
 
   beforeEach(() => {
+    resetAccountMocks();
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleWarning = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -45,9 +52,9 @@ describe('Polished inner pages', () => {
     ['/adopt', 'Your adoption journey'],
     ['/release', 'Support without judgement'],
     ['/contact', 'A clear route to the team'],
-  ])('keeps the %s form beside helpful, labelled next steps', (path, title) => {
+  ])('keeps the %s form beside helpful, labelled next steps', async (path, title) => {
     renderAt(path);
-    const guide = within(screen.getByRole('complementary'));
+    const guide = within(await screen.findByRole('complementary'));
     expect(guide.getByRole('heading', { name: title, level: 2 })).toBeInTheDocument();
     expect(guide.getByRole('heading', { name: 'What happens next', level: 3 })).toBeInTheDocument();
     expect(guide.getAllByRole('list').some((list) => list.tagName === 'OL' && list.children.length >= 3)).toBe(true);
@@ -70,9 +77,10 @@ describe('Polished inner pages', () => {
     expect(document.getElementById('about-visit-title')).toBeInTheDocument();
   });
 
-  it.each(routes)('keeps one main heading, ordered headings, unique IDs and reserved images on %s', (path) => {
+  it.each(routes)('keeps one main heading, ordered headings, unique IDs and reserved images on %s', async (path) => {
     renderAt(path);
     const main = screen.getByRole('main');
+    await within(main).findByRole('heading', { level: 1 });
     expect(within(main).getAllByRole('heading', { level: 1 })).toHaveLength(1);
     const headings = [...main.querySelectorAll('h1,h2,h3,h4,h5,h6')];
     for (let index = 1; index < headings.length; index += 1) {
@@ -94,11 +102,13 @@ describe('Polished inner pages', () => {
     });
   });
 
-  it('resolves every rendered navbar, footer, tile and button link to an existing route or section', () => {
+  it('resolves every rendered navbar, footer, tile and button link to an existing route or section', async () => {
     const targets = new Map();
     const links = [];
     for (const path of routes) {
+      resetAccountMocks();
       const view = renderAt(path);
+      await within(screen.getByRole('main')).findByRole('heading', { level: 1 });
       targets.set(path, new Set([...document.querySelectorAll('[id]')].map((node) => node.id)));
       document.querySelectorAll('a[href]').forEach((link) => links.push(new URL(link.getAttribute('href'), `https://pet-heaven.test${path}`)));
       view.unmount();
@@ -131,16 +141,16 @@ describe('Polished inner pages', () => {
     expect(localStorage.getItem('pet-heaven-contact_messages')).toBeNull();
   });
 
-  it('preserves member verification, draft, review, adoption save and calendar confirmation', async () => {
-    const member = { fullName: 'Jamie Tan', email: 'jamie@example.com', phone: '81234567', memberId: 'PH-DEMO-1' };
-    localStorage.setItem('pet-heaven-members', JSON.stringify([member]));
+  it('prefills the signed-in account and preserves draft, review, adoption save and calendar confirmation', async () => {
     const user = userEvent.setup();
     renderAt('/adopt?petId=milo');
+    const name = await screen.findByLabelText(/Applicant name/);
+    const form = within(name.closest('form'));
+    expect(name).toHaveValue(mockMember.fullName);
+    expect(form.getByLabelText(/Phone number/)).toHaveValue(mockMember.phone);
+    expect(form.getByLabelText('Email address')).toHaveValue(mockUser.email);
+    expect(form.getByLabelText('Email address')).toHaveAttribute('readonly');
     expect(screen.getByText('Step 1 of 3')).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/Membership email/), member.email);
-    await user.type(screen.getByLabelText(/Member ID/), member.memberId);
-    await user.click(screen.getByRole('button', { name: 'Verify membership' }));
-    expect(screen.getByText('Step 2 of 3')).toBeInTheDocument();
     expect(screen.getByLabelText(/Pet you would like to meet/)).toHaveValue('milo');
     await user.selectOptions(screen.getByLabelText(/Housing type/), 'Condominium');
     await user.selectOptions(screen.getByLabelText(/Do you own or rent/), 'rent');
@@ -154,24 +164,45 @@ describe('Polished inner pages', () => {
     await user.click(screen.getByLabelText(/I agree to an adoption conversation/));
     fireEvent.change(screen.getByLabelText(/Preferred interview date/), { target: { value: futureDate() } });
     await user.selectOptions(screen.getByLabelText(/Preferred time/), '10:00');
-    expect(JSON.parse(localStorage.getItem('pet-heaven-adoption-draft')).petId).toBe('milo');
+    const draftKey = `pet-heaven-adoption-draft-${mockUser.uid}`;
+    expect(JSON.parse(localStorage.getItem(draftKey))).toMatchObject({ petId: 'milo' });
     await user.click(screen.getByRole('button', { name: 'Review my enquiry' }));
-    expect(screen.getByText('Step 3 of 3')).toBeInTheDocument();
+    expect(screen.getByText('Step 2 of 3')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Check your enquiry before sending.' })).toBeInTheDocument();
     expect(localStorage.getItem('pet-heaven-adoption_requests')).toBeNull();
+    expect(sendFormEmails).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirm and send enquiry' }));
     expect(await screen.findByRole('heading', { name: 'Your enquiry reference' })).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('pet-heaven-adoption_requests'))[0]).toMatchObject({ petId: 'milo', memberId: member.memberId, landlordPermission: true });
-    // The existing storage hook resets to its initial draft rather than keeping the submitted answers.
-    expect(JSON.parse(localStorage.getItem('pet-heaven-adoption-draft'))).toMatchObject({ petId: 'milo', reason: '', experience: '', preferredDate: '', commitmentLongTerm: false });
+    expect(JSON.parse(localStorage.getItem('pet-heaven-adoption_requests'))[0]).toMatchObject({
+      petId: 'milo',
+      memberId: mockMember.memberId,
+      userId: mockUser.uid,
+      landlordPermission: true,
+      status: 'Submitted',
+    });
+    expect(JSON.parse(localStorage.getItem(draftKey))).toBeNull();
     const calendar = new URL(screen.getByRole('link', { name: /Add to calendar/ }).href);
     expect(calendar.hostname).toBe('calendar.google.com');
     expect(calendar.searchParams.get('dates')).toContain(futureDate().replaceAll('-', ''));
-    expect(sendAdminEmail).toHaveBeenCalledTimes(1);
+    expect(sendFormEmails).toHaveBeenCalledTimes(1);
+    expect(sendFormEmails).toHaveBeenCalledWith(expect.objectContaining({
+      formType: 'adopt',
+      reference: expect.stringMatching(/^AD-\d{4}-[A-Z0-9]{4}$/),
+      data: expect.objectContaining({
+        applicantName: mockMember.fullName,
+        email: mockUser.email,
+        phone: mockMember.phone,
+      }),
+    }));
   }, 20000);
 
   it('keeps Release photo validation and valid submission working beside the support guide', async () => {
     const user = userEvent.setup({ applyAccept: false });
+    const previewUrl = 'blob:https://pet-heaven.test/photo';
+    const createObjectURL = vi.fn(() => previewUrl);
+    const revokeObjectURL = vi.fn();
+    const BrowserUrl = URL;
+    vi.stubGlobal('URL', Object.assign(class extends BrowserUrl {}, { createObjectURL, revokeObjectURL }));
     renderAt('/release');
     const photo = screen.getByLabelText(/Pet photo \(optional\)/);
     await user.upload(photo, new File(['text'], 'notes.txt', { type: 'text/plain' }));
@@ -180,7 +211,11 @@ describe('Polished inner pages', () => {
     expect(localStorage.getItem('pet-heaven-release_requests')).toBeNull();
     await user.upload(photo, new File([new Uint8Array(2 * 1024 * 1024)], 'too-big.png', { type: 'image/png' }));
     expect(screen.getByText('Each image must be smaller than 2 MB.')).toBeInTheDocument();
-    await user.upload(photo, new File(['image'], 'pet.png', { type: 'image/png' }));
+    expect(createObjectURL).not.toHaveBeenCalled();
+    const selectedPhoto = new File(['image'], 'pet.png', { type: 'image/png' });
+    await user.upload(photo, selectedPhoto);
+    expect(await screen.findByRole('img', { name: 'Selected pet photo preview' })).toHaveAttribute('src', previewUrl);
+    expect(createObjectURL).toHaveBeenCalledWith(selectedPhoto);
     await user.type(screen.getByLabelText(/Your name/), 'Alex Lim');
     await user.type(screen.getByLabelText(/Email address/), 'alex@example.com');
     await user.type(screen.getByLabelText(/Phone number/), '81234567');
@@ -196,11 +231,18 @@ describe('Polished inner pages', () => {
     await user.selectOptions(screen.getByLabelText(/What is the main reason/), 'housing');
     await user.type(screen.getByLabelText(/Tell us a little more/), 'Our housing changed and we would like advice about safe options.');
     fireEvent.change(screen.getByLabelText(/Preferred handover date/), { target: { value: futureDate() } });
+    await user.click(screen.getByLabelText('Mark this request as urgent'));
     await user.click(screen.getByLabelText(/I agree that the Pet Heaven team/));
     await user.click(screen.getByRole('button', { name: 'Send a support request' }));
     expect(await screen.findByRole('heading', { name: 'Your request reference' })).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('pet-heaven-release_requests'))[0]).toMatchObject({ petName: 'Clover', photoFileName: 'pet.png', photoFileType: 'image/png' });
-    expect(sendAdminEmail).toHaveBeenCalledTimes(1);
-    expect(sendAdminEmail.mock.calls[0][1]).toBeInstanceOf(HTMLFormElement);
+    expect(revokeObjectURL).toHaveBeenCalledWith(previewUrl);
+    expect(sendFormEmails).toHaveBeenCalledTimes(1);
+    expect(sendFormEmails).toHaveBeenCalledWith(expect.objectContaining({
+      formType: 'release',
+      reference: expect.stringMatching(/^RL-\d{4}-[A-Z0-9]{4}$/),
+      data: expect.objectContaining({ photoFileName: 'pet.png', photoFileSize: 5, urgent: true }),
+    }));
+    expect(sendFormEmails.mock.calls[0][0].data).not.toHaveProperty('petPhoto');
   }, 20000);
 });

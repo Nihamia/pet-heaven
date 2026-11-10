@@ -10,7 +10,8 @@ This is a university assignment project. Statistics, organisation details, stori
 - About presents numbered mission cards, a story timeline, facility and team imagery, adoption steps, FAQs, and visiting information.
 - The pet gallery supports debounced search, filters including HDB-friendly, sorting, favourites, recently viewed pets, and a pet detail modal.
 - Join, Adopt, Release, and Contact use a shared page banner and a desktop form-and-guidance layout that stacks on smaller screens. Existing forms provide inline validation, loading states, and submission feedback.
-- The adoption enquiry checks membership saved in the same browser. It is a student demo flow, not secure account authentication.
+- Get Involved explains volunteer, foster and donor options and links to registration with the chosen role selected.
+- Members sign in with Firebase Authentication and can open their profile, printable membership card and adoption requests on another device. Adoption uses their signed-in account and prefills their contact details.
 - The app uses reusable UI, form, layout, and pet components, plus shared form and browser-storage hooks.
 - Light and dark themes, keyboard-accessible navigation dropdowns/mobile accordions, breadcrumbs, route-aware page titles, visible focus states, and accessible form labels are included.
 - Privacy, Terms, and a generated image Credits page are linked from the footer.
@@ -24,8 +25,11 @@ This is a university assignment project. Statistics, organisation details, stori
 | `/about` | Mission, story, facilities, adoption process, team, FAQ, and visiting information |
 | `/pets` | Searchable and filterable adoption gallery |
 | `/pets/:id` | Gallery with the selected pet's detail modal |
-| `/join` | Supporter registration and generated member ID |
-| `/adopt` | Member check, saved draft, enquiry review, and confirmation |
+| `/get-involved` | Volunteer, foster, and donor or sponsorship information |
+| `/join` | Account registration, member profile, and support roles |
+| `/login`, `/forgot-password` | Sign-in and email password reset |
+| `/member` | Protected membership card, resources, requests and profile editing |
+| `/adopt` | Protected enquiry with profile prefill, draft, review and confirmation |
 | `/release` | Owner/pet support request with optional photo |
 | `/contact` | General message form and contact information |
 | `/privacy`, `/terms` | Static information about this coursework demonstration |
@@ -36,8 +40,8 @@ This is a university assignment project. Statistics, organisation details, stori
 
 - Vite, React, JavaScript, and React Router 6
 - Plain CSS with shared variables; no CSS framework or component library
-- EmailJS for administrator email when configured
-- Firebase Firestore for optional remote pet and form data
+- EmailJS for administrator notifications and user acknowledgements when configured
+- Firebase Authentication for member accounts and Firestore for profiles, adoption requests and optional remote pet and public form data
 - Browser local storage and bundled JSON as fallbacks
 - Vitest, React Testing Library, and jsdom for integration tests
 - Firebase Hosting configuration for optional deployment
@@ -56,7 +60,7 @@ if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
 npm run dev
 ```
 
-Open the local address printed by Vite (usually `http://localhost:5173`). The app works with the sample pet data and browser storage when Firebase and EmailJS settings are left blank. Form submissions are retained in the current browser; they are not shared with other devices.
+Open the local address printed by Vite (usually `http://localhost:5173`). With the Firebase settings blank, public pages use the bundled pet data and public forms can save browser copies. Configure Firebase to enable Join, Login, Member and Adopt. Configure EmailJS for the administrator notification and applicant acknowledgement.
 
 To build and preview the production version locally:
 
@@ -65,23 +69,37 @@ npm run build
 npm run preview
 ```
 
-## Optional service setup
+## Form email and Firestore setup
 
 ### EmailJS
 
-1. Create an EmailJS service and a template for the project forms.
-2. Put the service ID, template ID, and public key in `.env.local` using the variable names in `.env.example`.
-3. Set the administrator recipient in the EmailJS dashboard, not in the React source.
-4. Map the template fields to the parameters supplied by the form pages. For release photo uploads, configure the template's file attachment to use `petPhoto`.
-5. Restart Vite after changing environment values. Use a test inbox/template while trying submissions.
+The outline requires administrator emails. Follow the [two ready-to-paste templates, dashboard samples and email checklist](docs/emailjs-templates.md). Set the administrator template's recipient in EmailJS and use `{{to_email}}` as the acknowledgement template's recipient.
 
-EmailJS is not configured by default. Without its settings, the app can still validate and save submissions locally, but it will not email the administrator.
+Keep `VITE_EMAILJS_SERVICE_ID` and `VITE_EMAILJS_PUBLIC_KEY` in `.env.local`, and replace the four form-specific template IDs with `VITE_EMAILJS_TEMPLATE_ADMIN` and `VITE_EMAILJS_TEMPLATE_ACK`. Restart Vite after changing these values and rebuild before deploying.
 
-### Firebase and Firestore
+Each form saves its record and sends the administrator notification first. After EmailJS accepts it for delivery, the app sends the user acknowledgement. A failed admin delivery shows an error and **Retry email** uses the saved reference and timestamp. Acknowledgement failure shows a separate warning. The hidden spam trap rejects filled entries before saving or sending. New attempts and retries share a 30-second browser cooldown.
 
-Firebase is optional for local development. To use Firestore, create a Firebase project and web app, enable Firestore, then copy the web app settings into the matching `VITE_FIREBASE_*` entries in `.env.local`. The app reads pet documents from the `pets` collection and writes member, adoption, release, and contact records to their respective collections. If Firebase is not configured, pet profiles come from `src/data/pets.json` and form records use local storage.
+Join's donor, volunteer and foster answers go to the administrator. Release previews its photo in the browser and sends the filename, size and urgency selection in the administrator notification. The free plan allows two templates and 200 requests a month. A completed admin and acknowledgement pair uses two requests. [EmailJS pricing](https://www.emailjs.com/pricing/)
 
-The included [firestore.rules](firestore.rules) lets visitors read pet profiles and create validated form records, while blocking client reads of member and request records. It also blocks client writes to pet profiles; add or update those records through the Firebase Console or a trusted administrative setup. These rules are for an assignment demo and are not a complete production security design.
+### Firebase Authentication and Firestore
+
+1. Open the existing `petheaven-b7766` project in the [Firebase Console](https://console.firebase.google.com/project/petheaven-b7766/firestore). Under **Databases & Storage → Firestore**, click **Create database**. Choose **Standard edition**, the **(default)** database and **Singapore (`asia-southeast1`)**. Select **Production mode**, then create the database. [Firebase setup guide](https://firebase.google.com/docs/firestore/quickstart) · [Firebase regions](https://firebase.google.com/docs/firestore/locations)
+2. In **Project settings → General → Your apps**, select or register your web app. Copy its SDK config values to the matching `VITE_FIREBASE_*` entries in `.env.local`.
+3. Open **Authentication → Sign-in method** and enable **Email/Password**. The site keeps sign-in state on the current browser until the member signs out. [Firebase email and password setup](https://firebase.google.com/docs/auth/web/password-auth) · [Firebase auth persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence)
+4. From the project folder, deploy the checked-in rules with the Firebase CLI and restart Vite.
+
+   ```powershell
+   firebase.cmd deploy --only firestore:rules --project petheaven-b7766
+   npm.cmd run dev
+   ```
+
+`authService.js` sends credentials to Firebase Authentication. `memberService.js` stores the member's editable profile and display member ID in `members/{uid}`. Adoption requests include that UID and the display member ID. My Requests queries by UID and can show a matching browser copy when Firestore is unavailable. `petService.js` continues to use `pets.json` as the bundled pet fallback. Release and Contact keep their existing storage behavior.
+
+The [rules](firestore.rules) let each signed-in member access their own profile and adoption requests and update only permitted profile fields. Release and Contact accept validated public submissions, while administrator reads, request edits and client deletes are denied. [Firestore rule operations](https://firebase.google.com/docs/firestore/security/rules-structure)
+
+The previous member IDs and email hashes were lookup records. Anyone who joined with that flow must create an account with a password. The old documents can remain in Firestore and the app's account queries use the Firebase UID.
+
+For a live check, register on a laptop, then sign in on a phone using the hosted build and the same email and password. Open an available pet, send an adoption enquiry and check My Requests on both devices. Match both emails to the reference, then sign out and verify that the Member and Adopt routes redirect to Login.
 
 ## Tests
 
@@ -103,7 +121,7 @@ For watch mode while editing:
 npm run test:watch
 ```
 
-The suite covers route navigation, dropdown and mobile menu controls, newsletter validation, section links, pet search and HDB/species filtering, sorting/reset, empty results, favourite persistence, pet details and preselected adoption, membership validation and password handling, the non-member adoption check, release phone validation, contact submission, page banners, legal pages, and the generated image catalogue. Firebase and EmailJS are mocked in tests so they do not contact live services. Read the current command output for the test count and result; this README does not substitute for running the checks.
+The suite covers route navigation, dropdown and mobile menu controls, newsletter validation, pet gallery and filters, protected account routes, sign-in and registration, role-specific fields, adoption prefill and requests, public forms, page banners, legal pages, and the image catalogue. Tests mock Firebase and EmailJS.
 
 Use the [final manual checklist](docs/step4-final-checklist.md) to check desktop, mobile, dark mode, keyboard access, links, and every form. Automated tests exercise the app with mocked services; actual EmailJS delivery and Firestore access require separate checks against your configured projects.
 
@@ -133,7 +151,7 @@ Firebase is one hosting choice, not a requirement of the core React application.
 4. Deploy Hosting and the Firestore rules:
 
    ```powershell
-   firebase deploy --only hosting,firestore:rules
+   firebase deploy --only firestore:rules,hosting
    ```
 
    If you are only using Hosting and do not want to deploy Firestore rules, run `firebase deploy --only hosting` instead.

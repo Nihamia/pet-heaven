@@ -1,0 +1,109 @@
+.get-involved-page__content {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.get-involved-page__jump-links,
+.involved-role__header,
+.role-card__choice {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.get-involved-page__jump-links {
+  flex-wrap: wrap;
+}
+
+.role-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-orange-soft);
+  color: var(--color-ink);
+  font-size: 1.4rem;
+}
+
+.involved-role__time {
+  margin-block: var(--space-4);
+}
+
+.involved-role__time strong {
+  margin-inline-end: var(--space-2);
+  color: var(--color-ink);
+}
+
+.involved-role__details,
+.involved-benefits,
+.join-role-cards,
+.role-card__fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.involved-role__details {
+  margin-block: var(--space-4) var(--space-6);
+}
+
+.involved-role__details ul,
+.involved-role__details ol {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+
+.involved-role__details li + li {
+  margin-block-start: var(--space-2);
+}
+
+.involved-benefits p,
+.role-card .form-field__hint {
+  margin-block-end: 0;
+}
+
+.get-involved-page__cta {
+  background: var(--color-orange-soft);
+}
+
+.role-card--selected {
+  border-color: var(--color-teal-strong);
+}
+
+.role-card__fields,
+.role-card__days {
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+}
+
+.role-card__fields {
+  margin: var(--space-4) 0 0;
+}
+
+.role-card__fields > legend,
+.role-card__days > legend {
+  padding: 0;
+  margin-block-end: var(--space-2);
+  font-weight: 700;
+}
+
+.role-card__days {
+  margin: 0;
+}
+
+.role-card__day-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.role-card__day-options .form-field__checkbox-row {
+  min-block-size: 2.5rem;
+}
+
+@media (min-width: 48rem) {
+  .involved-role__details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .involved-benefits { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import fallbackPets from '../data/pets.json';
-import { getPetRecords } from '../services/dataService.js';
+import { getPetRecords } from '../services/petService.js';
 import { isFirebaseConfigured } from '../services/firebaseClient.js';
 
 // Load the shared pet list from Firestore when ready and fall back to the bundled sample data.

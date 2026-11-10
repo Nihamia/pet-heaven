@@ -101,8 +101,7 @@ export default function PetDetailModal({ pet, isFavourite, onToggleFavourite, on
 
           <div className="pet-detail__actions">
             <Button
-              state={{ petId: pet.id }}
-              to="/adopt"
+              to={`/adopt?${new URLSearchParams({ petId: pet.id })}`}
               variant="primary"
             >
               Ask to adopt {pet.name}

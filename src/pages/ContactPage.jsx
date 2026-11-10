@@ -3,12 +3,12 @@ import FormField from '../components/forms/FormField.jsx';
 import FormPageShell from '../components/forms/FormPageShell.jsx';
 import FormGuide from '../components/forms/FormGuide.jsx';
 import SubmissionFeedback from '../components/forms/SubmissionFeedback.jsx';
-import Alert from '../components/ui/Alert.jsx';
+import SubmissionHoneypot from '../components/forms/SubmissionHoneypot.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import useForm from '../hooks/useForm.js';
-import { sendAdminEmail } from '../services/emailService.js';
+import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import { saveSubmission } from '../services/dataService.js';
 import { email as validateEmail, maxLength, minLength, required, singaporePhone } from '../utils/validators.js';
 import { makeReference } from '../utils/formUtils.js';
@@ -33,12 +33,15 @@ function validateContact(values) {
 
 // Let visitors send a question and view Pet Heaven's sample contact information.
 export default function ContactPage() {
-  const [submission, setSubmission] = useState(null);
-  const [referenceId, setReferenceId] = useState(() => makeReference('PH-CON'));
+  const { submission, beginSubmission, honeypotRef, deliver, retry, isRetrying, clearSubmission } = useAdminSubmission('contact');
+  const [referenceId, setReferenceId] = useState(() => makeReference('CT'));
   const form = useForm({ initialValues, validate: validateContact });
   const fieldError = (name) => form.touched[name] ? form.errors[name] : '';
 
   async function submitContact(values) {
+    if (isRetrying) return;
+    beginSubmission();
+    clearSubmission();
     const record = {
       referenceId,
       name: values.name.trim(),
@@ -48,18 +51,9 @@ export default function ContactPage() {
       message: values.message.trim(),
     };
     const saved = await saveSubmission('contact_messages', record);
-    const email = await sendAdminEmail({
-      form_type: 'Website contact message',
-      reference_id: referenceId,
-      from_name: record.name,
-      reply_to: record.email,
-      subject: record.subject,
-      message: record.message,
-      details: JSON.stringify(record, null, 2),
-    });
-    setSubmission({ saved, email, referenceId });
+    await deliver(saved, record, referenceId);
     form.reset(initialValues);
-    setReferenceId(makeReference('PH-CON'));
+    setReferenceId(makeReference('CT'));
   }
 
   return (
@@ -88,19 +82,15 @@ export default function ContactPage() {
         <Card className="service-form-card" padding="large">
           <SectionHeading eyebrow="Send a message" title="What would you like to know?" />
           {form.submitError && <SubmissionFeedback error={form.submitError} />}
-          {submission && <SubmissionFeedback referenceId={submission.referenceId} result={submission} />}
-          {submission && !submission.email.sent && (
-            <Alert className="contact-page__setup-note" tone="info">
-              If your question needs a quick response, contact the administrator directly after configuring the sample email service.
-            </Alert>
-          )}
+          <SubmissionFeedback isRetrying={isRetrying} onRetry={form.isSubmitting ? undefined : retry} result={submission} />
           <form className="service-form" id="contact-form" noValidate onSubmit={form.handleSubmit(submitContact)}>
+            <SubmissionHoneypot inputRef={honeypotRef} />
             <FormField autoComplete="name" error={fieldError('name')} label="Your name" name="name" onBlur={form.handleBlur} onChange={form.handleChange} required value={form.values.name} />
             <FormField autoComplete="email" error={fieldError('email')} label="Email address" name="email" onBlur={form.handleBlur} onChange={form.handleChange} required type="email" value={form.values.email} />
             <FormField autoComplete="tel" error={fieldError('phone')} hint="Optional. If entered, use a Singapore number." label="Phone number" name="phone" onBlur={form.handleBlur} onChange={form.handleChange} type="tel" value={form.values.phone} />
             <FormField error={fieldError('subject')} label="Subject" name="subject" onBlur={form.handleBlur} onChange={form.handleChange} required value={form.values.subject} />
             <FormField error={fieldError('message')} hint="Please avoid including sensitive personal information." label="Message" name="message" onBlur={form.handleBlur} onChange={form.handleChange} required rows={6} type="textarea" value={form.values.message} />
-            <Button className="service-form__submit" loading={form.isSubmitting} type="submit">{form.isSubmitting ? 'Sending…' : 'Send message'}</Button>
+            <Button className="service-form__submit" disabled={isRetrying} loading={form.isSubmitting} type="submit">{form.isSubmitting ? 'Sending…' : 'Send message'}</Button>
           </form>
         </Card>
 

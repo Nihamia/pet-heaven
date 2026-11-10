@@ -2,10 +2,11 @@ import { useEffect, useId, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 // Share one keyboard-friendly disclosure list between desktop navigation and mobile accordions.
-export default function Dropdown({ label, items, open, onToggle, onClose, onNavigate, active }) {
+export default function Dropdown({ label, items, open, onToggle, onClose, onNavigate, active, className = '' }) {
   const listId = `dropdown-${useId().replaceAll(':', '')}`;
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
+  const listRef = useRef(null);
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
@@ -28,14 +29,14 @@ export default function Dropdown({ label, items, open, onToggle, onClose, onNavi
       event.preventDefault();
       if (!open) onToggle();
       window.requestAnimationFrame(() => {
-        const links = containerRef.current?.querySelectorAll('a');
-        links?.[event.key === 'ArrowUp' ? links.length - 1 : 0]?.focus();
+        const controls = listRef.current?.querySelectorAll('a, button');
+        controls?.[event.key === 'ArrowUp' ? controls.length - 1 : 0]?.focus();
       });
     }
   }
 
   return (
-    <li className={`nav-dropdown${open ? ' nav-dropdown--open' : ''}`} onKeyDown={handleKeyDown} ref={containerRef}
+    <li className={['nav-dropdown', open ? 'nav-dropdown--open' : '', className].filter(Boolean).join(' ')} onKeyDown={handleKeyDown} ref={containerRef}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onClose(); }}>
       <button aria-controls={listId} aria-expanded={open} aria-haspopup="true" className={`nav-link dropdown-trigger${active ? ' nav-link--active' : ''}`}
         onClick={onToggle} ref={triggerRef} type="button">
@@ -43,8 +44,11 @@ export default function Dropdown({ label, items, open, onToggle, onClose, onNavi
           <path d="m3 5.5 5 5 5-5" />
         </svg>
       </button>
-      <ul className="dropdown-list" hidden={!open} id={listId}>
-        {items.map(({ label: itemLabel, to }) => {
+      <ul className="dropdown-list" hidden={!open} id={listId} ref={listRef}>
+        {items.map(({ label: itemLabel, to, onSelect, disabled }) => {
+          if (onSelect) {
+            return <li key={itemLabel}><button className="dropdown-link dropdown-action" disabled={disabled} onClick={onSelect} type="button">{itemLabel}</button></li>;
+          }
           const current = `${pathname}${hash}` === to;
           return <li key={itemLabel}><Link aria-current={current ? 'location' : undefined}
             className={`dropdown-link${current ? ' dropdown-link--active' : ''}`} onClick={onNavigate} to={to}>{itemLabel}</Link></li>;
