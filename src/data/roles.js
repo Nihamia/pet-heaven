@@ -4,6 +4,21 @@ const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 export const roles = [
   {
+    id: 'adopter',
+    title: 'Adopter',
+    selectionLabel: 'Adopter',
+    emailLabel: 'Adopter',
+    icon: '🐾',
+    summary: "I'd like to adopt a pet. Browse our cats and dogs, then submit an adoption request once you have registered.",
+    selectionField: 'interestAdopter',
+    fields: [],
+    emailNextSteps: [
+      'Browse available pets.',
+      'Open a pet’s profile and choose Adopt.',
+      'Staff will contact you to arrange an interview.',
+    ],
+  },
+  {
     id: 'volunteer',
     anchor: 'volunteer',
     title: 'Volunteer',
@@ -82,6 +97,17 @@ export const roles = [
   },
 ];
 
+// Accept the stored role ID and the display label used by some Firestore records.
+export function findMemberRole(value) {
+  return roles.find(({ id, emailLabel }) => value === id || value === emailLabel);
+}
+
+export function getMemberRoles(values) {
+  return Array.isArray(values) ? [...new Set(values.map(findMemberRole).filter(Boolean))] : [];
+}
+
+export const requiredRoleMessage = 'Choose at least one option, or Adopter if you only want to adopt.';
+
 export function roleFieldOptions(field, pets = []) {
   return field.type === 'pet' ? pets.map((pet) => ({ value: pet.id, label: `${pet.name} (${pet.species})` })) : field.options ?? [];
 }
@@ -117,17 +143,21 @@ function validateRoleField(field, value, pets) {
 
 export function validateRoleAnswers(values, pets) {
   const selected = roles.filter((role) => values[role.selectionField]);
-  if (!selected.length) return { interests: 'Choose at least one way you would like to support the society.' };
+  if (!selected.length) return { interests: requiredRoleMessage };
   return Object.fromEntries(selected.flatMap((role) => role.fields.map((field) => [field.name, validateRoleField(field, values[field.name], pets)])));
 }
 
-// Collect only the selected roles' answers and use display labels for the email.
+// Group selected answers by role for the private profile and administrator email.
 export function collectRoleAnswers(values, pets) {
-  const selected = roles.filter((role) => values[role.selectionField]);
-  return Object.fromEntries(selected.flatMap((role) => role.fields.map((field) => {
-    const value = values[field.name];
-    const option = findOption(field, value, pets);
-    if (typeof option === 'object') return [field.name, option.label];
-    return [field.name, typeof value === 'string' ? value.trim() : value];
-  })));
+  const selected = roles.filter((role) => values[role.selectionField] && role.fields.length);
+  return Object.fromEntries(selected.map((role) => {
+    const answers = role.fields.map((field) => {
+      const value = values[field.name];
+      const option = findOption(field, value, pets);
+      if (typeof option === 'object') return [field.name, option.label];
+      if (field.type === 'number') return [field.name, Number(value)];
+      return [field.name, typeof value === 'string' ? value.trim() : value];
+    });
+    return [role.id, Object.fromEntries(answers)];
+  }));
 }

@@ -1,4 +1,4 @@
-import { makeReference } from '../utils/formUtils.js';
+import { makeMemberReference } from './referenceService.js';
 import { waitForRemote } from './dataService.js';
 import { getFirestoreClient } from './firebaseClient.js';
 
@@ -61,12 +61,16 @@ export async function registerMember(user, profile) {
   const existing = await getMember(uid);
   if (existing) return registrationResult(existing, true);
 
+  const createdAt = new Date().toISOString();
   const member = {
     uid,
-    memberId: makeReference('PH'),
+    memberId: makeMemberReference(),
     ...editableDetails(profile),
     status: 'Active',
-    createdAt: new Date().toISOString(),
+    createdAt,
+    updatedAt: createdAt,
+    email: user.email,
+    roleDetails: profile.roleDetails,
     ageConfirmed: profile.ageConfirmed,
     dataConsent: profile.dataConsent,
     newsletter: profile.newsletter,

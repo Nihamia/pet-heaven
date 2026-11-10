@@ -32,7 +32,7 @@ export default function RoleCard({ role, values, fieldError, onChange, onBlur, p
         <span aria-hidden="true" className="role-icon">{role.icon}</span>
         <FormField checked={selected} hint={role.summary} label={role.selectionLabel} name={role.selectionField} onBlur={onBlur} onChange={onChange} type="checkbox" />
       </div>
-      {selected && (
+      {selected && role.fields.length > 0 && (
         <fieldset className="role-card__fields">
           <legend>{role.selectionLabel} details</legend>
           {role.fields.map((field) => field.type === 'days' ? (

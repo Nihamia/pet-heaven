@@ -13,7 +13,7 @@ vi.mock('../services/emailService.js', () => ({ sendFormEmails: vi.fn(async () =
 
 const routes = [
   '/', '/about', '/pets', '/join', '/adopt', '/release', '/contact', '/privacy', '/terms', '/credits',
-  '/get-involved', '/login', '/forgot-password', '/member', '/not-a-page',
+  '/get-involved', '/login', '/forgot-password', '/member', '/admin/login', '/not-a-page',
 ];
 
 function renderAt(path = '/') {
@@ -235,7 +235,7 @@ describe('Polished inner pages', () => {
     await user.click(screen.getByLabelText(/I agree that the Pet Heaven team/));
     await user.click(screen.getByRole('button', { name: 'Send a support request' }));
     expect(await screen.findByRole('heading', { name: 'Your request reference' })).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('pet-heaven-release_requests'))[0]).toMatchObject({ petName: 'Clover', photoFileName: 'pet.png', photoFileType: 'image/png' });
+    expect(JSON.parse(localStorage.getItem('pet-heaven-release_requests'))[0]).toMatchObject({ petName: 'Clover', photoFileName: 'pet.png', photoFileType: 'image/png', urgent: true, status: 'New' });
     expect(revokeObjectURL).toHaveBeenCalledWith(previewUrl);
     expect(sendFormEmails).toHaveBeenCalledTimes(1);
     expect(sendFormEmails).toHaveBeenCalledWith(expect.objectContaining({

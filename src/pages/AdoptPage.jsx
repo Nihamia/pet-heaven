@@ -13,9 +13,12 @@ import useForm from '../hooks/useForm.js';
 import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import usePets from '../hooks/usePets.js';
+import { getPetAvailabilityStatus } from '../services/petService.js';
+import { isUnavailablePetStatus } from '../utils/petUtils.js';
 import { saveSubmission } from '../services/dataService.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { isFutureDate, makeReference } from '../utils/formUtils.js';
+import { makeReference } from '../services/referenceService.js';
+import { isFutureDate } from '../utils/formUtils.js';
 import { maxLength, minLength, required, singaporePhone } from '../utils/validators.js';
 
 function minimumFutureDate() {
@@ -75,7 +78,7 @@ export default function AdoptPage() {
         </Alert>
         {memberError
           ? <Button onClick={() => refreshMember()} type="button">Retry profile</Button>
-          : <Button to="/join">Complete registration</Button>}
+          : <Button to="/join?role=adopter">Become a member to adopt</Button>}
       </FormPageShell>
     );
   }
@@ -87,9 +90,10 @@ function AdoptionForm({ member, user }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const initialPetId = location.state?.petId ?? searchParams.get('petId') ?? '';
-  const { pets, message: petLoadMessage } = usePets();
+  const { pets, availability, message: petLoadMessage } = usePets();
   const availablePets = pets.filter((pet) => pet.status === 'Available');
   const [isReviewing, setIsReviewing] = useState(false);
+  const [availabilityCheck, setAvailabilityCheck] = useState(null);
   const { submission, beginSubmission, honeypotRef, deliver, retry, isRetrying } = useAdminSubmission('adopt');
   const [interview, setInterview] = useState(null);
   const [referenceId] = useState(() => makeReference('AD'));
@@ -122,6 +126,10 @@ function AdoptionForm({ member, user }) {
   const form = useForm({ initialValues, validate: validateAdoption });
   const fieldError = (name) => form.touched[name] ? form.errors[name] : '';
   const chosenPet = availablePets.find((pet) => pet.id === form.values.petId);
+  const petStatus = availabilityCheck?.id === form.values.petId
+    ? availabilityCheck.status
+    : availability?.get(form.values.petId) ?? pets.find((pet) => pet.id === form.values.petId)?.status;
+  const unavailablePet = isUnavailablePetStatus(petStatus);
 
   useEffect(() => {
     const { applicantName, applicantPhone, ...draftValues } = form.values;
@@ -129,13 +137,23 @@ function AdoptionForm({ member, user }) {
   }, [form.values, setDraft]);
 
   async function submitAdoption(values) {
+    if (unavailablePet) return;
+    if (!chosenPet) throw new Error('Choose a pet currently available for adoption.');
     if (!isReviewing) {
       setIsReviewing(true);
       return;
     }
 
+    async function checkAvailability() {
+      const status = await getPetAvailabilityStatus(values.petId);
+      if (!isUnavailablePetStatus(status)) return true;
+      setAvailabilityCheck({ id: values.petId, status });
+      return false;
+    }
+
+    if (!(await checkAvailability())) return;
     beginSubmission();
-    const pet = availablePets.find((item) => item.id === values.petId);
+    const pet = chosenPet;
     const record = {
       referenceId,
       userId: user.uid,
@@ -160,7 +178,14 @@ function AdoptionForm({ member, user }) {
       preferredTime: values.preferredTime,
       status: 'Submitted',
     };
-    const saved = await saveSubmission('adoption_requests', record);
+    let saved;
+    try {
+      saved = await saveSubmission('adoption_requests', record);
+    } catch (error) {
+      if (error.code !== 'permission-denied') throw error;
+      if (!(await checkAvailability())) return;
+      throw new Error('We could not submit your request. The pet may no longer be available. Browse other pets or sign in again and retry.');
+    }
     setInterview({ date: record.preferredDate, time: record.preferredTime, petName: record.petName });
     await deliver(saved, record, referenceId);
     removeDraft();
@@ -170,6 +195,15 @@ function AdoptionForm({ member, user }) {
     setIsReviewing(false);
     form.handleChange(event);
   };
+
+  if (unavailablePet && !submission) {
+    return (
+      <FormPageShell className="adopt-page" eyebrow="Adoption enquiry" title={petStatus === 'Reserved' ? 'This pet is currently reserved' : 'This pet has already been adopted'}>
+        <Alert tone="warning">Adoption enquiries for this pet are closed.</Alert>
+        <Button to="/pets">Browse other pets</Button>
+      </FormPageShell>
+    );
+  }
 
   if (submission) {
     const emailSent = submission.email.sent;
@@ -209,7 +243,12 @@ function AdoptionForm({ member, user }) {
       {petLoadMessage && <Alert className="service-page__notice" tone="warning">{petLoadMessage}</Alert>}
         <Card className="service-form-card adopt-application-card" padding="large">
           <SectionHeading eyebrow="Step 1 · your details" title="Let’s find a good fit." />
-          {form.submitError && <SubmissionFeedback error={form.submitError} />}
+          {form.submitError && (
+            <>
+              <SubmissionFeedback error={form.submitError} />
+              <Button size="small" to="/pets" variant="outline">Browse other pets</Button>
+            </>
+          )}
           <form className="service-form" noValidate onSubmit={form.handleSubmit(submitAdoption)}>
             <SubmissionHoneypot inputRef={honeypotRef} />
             <FormField label="Email address" name="applicantEmail" readOnly type="email" value={user.email} />

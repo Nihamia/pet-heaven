@@ -138,7 +138,7 @@ describe('Member accounts and Get Involved', () => {
     expect(await requests.findByText('AD-2026-OWN1')).toBeInTheDocument();
     expect(requests.getByText('AD-2026-LOC1')).toBeInTheDocument();
     expect(requests.getByText('Milo')).toBeInTheDocument();
-    expect(requests.getAllByText('Submitted')).toHaveLength(2);
+    expect(requests.getAllByText('New')).toHaveLength(2);
     expect(requests.queryByText('AD-2026-OTH1')).toBeNull();
     expect(requests.queryByText('AD-2026-OTH2')).toBeNull();
     expect(mockFirestoreSdk.where).toHaveBeenCalledWith('userId', '==', mockUser.uid);
@@ -163,6 +163,49 @@ describe('Member accounts and Get Involved', () => {
       status: mockMember.status,
       createdAt: mockMember.createdAt,
     }));
+  });
+
+  it('adds and removes Adopter in My Details and requires at least one role', async () => {
+    seedSignedInMember();
+    renderAt('/member');
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit details' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    fireEvent.click(dialog.getByRole('checkbox', { name: 'Adopter' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Save details' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const profile = () => mockDocuments.get('members/' + mockUser.uid);
+    expect(profile().roles).toEqual(['adopter', 'volunteer']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    const edit = within(await screen.findByRole('dialog'));
+    expect(edit.getByRole('checkbox', { name: 'Adopter' })).toBeChecked();
+    fireEvent.click(edit.getByRole('checkbox', { name: 'Adopter' }));
+    fireEvent.click(edit.getByRole('checkbox', { name: 'Volunteer' }));
+    fireEvent.click(edit.getByRole('button', { name: 'Save details' }));
+    expect(edit.getByRole('alert')).toHaveTextContent('Choose at least one option, or Adopter if you only want to adopt.');
+    expect(profile().roles).toEqual(['adopter', 'volunteer']);
+    fireEvent.click(edit.getByRole('checkbox', { name: 'Volunteer' }));
+    fireEvent.click(edit.getByRole('button', { name: 'Save details' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(profile().roles).toEqual(['volunteer']);
+  });
+
+  it('shows the adoption form for a completed Adopter-only profile', async () => {
+    seedSignedInMember();
+    mockDocuments.set('members/' + mockUser.uid, { ...mockMember, roles: ['adopter'] });
+    renderAt('/adopt?petId=milo');
+    expect(await screen.findByLabelText(/Pet you would like to meet/)).toHaveValue('milo');
+  });
+
+  it('links signed-out visitors to Adopter registration from pet details and Get Involved', async () => {
+    const petView = renderAt('/pets/milo');
+    const dialog = within(await screen.findByRole('dialog', { name: 'Meet Milo' }));
+    expect(dialog.getByRole('link', { name: 'Become a member to adopt' })).toHaveAttribute('href', '/join?role=adopter');
+    petView.unmount();
+    renderAt('/get-involved');
+    const strip = within(screen.getByRole('region', { name: 'Want to adopt?' }));
+    expect(strip.getByRole('link', { name: 'Browse pets' })).toHaveAttribute('href', '/pets');
+    expect(strip.getByRole('link', { name: 'Join as an Adopter' })).toHaveAttribute('href', '/join?role=adopter');
   });
 
   it('preselects the role linked from the hub and toggles each role’s questions independently', async () => {

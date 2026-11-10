@@ -1,15 +1,3 @@
-// Create a short, human-readable reference for membership and form submissions.
-export function makeReference(prefix) {
-  const randomValue = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) {
-    globalThis.crypto.getRandomValues(randomValue);
-  } else {
-    randomValue[0] = Math.floor(Math.random() * 0x100000000);
-  }
-  const suffix = (randomValue[0] % (36 ** 4)).toString(36).toUpperCase().padStart(4, '0');
-  return `${prefix}-${new Date().getFullYear()}-${suffix}`;
-}
-
 // Compare a date-only input with the local calendar day without timezone rollover surprises.
 export function isFutureDate(value) {
   if (!value) return false;

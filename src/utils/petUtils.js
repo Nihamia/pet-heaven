@@ -1,6 +1,16 @@
+export const petAvailabilityStatuses = ['Available', 'Reserved', 'Adopted'];
+
+export function isUnavailablePetStatus(status) {
+  return status === 'Reserved' || status === 'Adopted';
+}
+
 // Format the sample pet age in years and months without showing unnecessary decimals.
-export function formatPetAge(ageYears) {
-  const totalMonths = Math.max(0, Math.round(Number(ageYears) * 12));
+export function petAgeInMonths(ageYears, ageMonths = 0) {
+  return Math.max(0, Math.round(Number(ageYears) * 12 + Number(ageMonths)));
+}
+
+export function formatPetAge(ageYears, ageMonths) {
+  const totalMonths = petAgeInMonths(ageYears, ageMonths);
   const years = Math.floor(totalMonths / 12);
   const months = totalMonths % 12;
 

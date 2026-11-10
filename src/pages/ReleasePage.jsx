@@ -11,7 +11,8 @@ import SectionHeading from '../components/ui/SectionHeading.jsx';
 import useForm from '../hooks/useForm.js';
 import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import { saveSubmission } from '../services/dataService.js';
-import { isFutureDate, makeReference } from '../utils/formUtils.js';
+import { makeReference } from '../services/referenceService.js';
+import { isFutureDate } from '../utils/formUtils.js';
 import {
   email as validateEmail,
   imageFile,
@@ -124,9 +125,10 @@ export default function ReleasePage() {
       photoFileType: photo?.type ?? '',
       photoFileSize: photo?.size ?? 0,
       consent: values.consent,
+      urgent: values.urgent,
     };
     const saved = await saveSubmission('release_requests', record);
-    await deliver(saved, { ...record, urgent: values.urgent }, referenceId);
+    await deliver(saved, record, referenceId);
     form.reset(initialValues);
   }
 
@@ -219,7 +221,7 @@ export default function ReleasePage() {
             ]} placeholder="Choose one" required type="select" value={form.values.reason} />
             <FormField error={fieldError('reasonDetails')} hint="Share only what you feel comfortable sharing." label="Tell us a little more" name="reasonDetails" onBlur={form.handleBlur} onChange={form.handleChange} required rows={5} type="textarea" value={form.values.reasonDetails} />
             <FormField error={fieldError('handoverDate')} hint="This is a preference only. We will confirm availability with you." label="Preferred handover date" min={minimumFutureDate()} name="handoverDate" onBlur={form.handleBlur} onChange={form.handleChange} required type="date" value={form.values.handoverDate} />
-            <FormField checked={form.values.urgent} hint="Flags your request for the team in the email." label="Mark this request as urgent" name="urgent" onChange={form.handleChange} type="checkbox" />
+            <FormField checked={form.values.urgent} hint="Flags your request for the team." label="Mark this request as urgent" name="urgent" onChange={form.handleChange} type="checkbox" />
           </fieldset>
 
           <FormField checked={form.values.consent} error={fieldError('consent')} label="I agree that the Pet Heaven team may contact me about this request." name="consent" onBlur={form.handleBlur} onChange={form.handleChange} required type="checkbox" />

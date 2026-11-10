@@ -11,7 +11,7 @@ import useForm from '../hooks/useForm.js';
 import useAdminSubmission from '../hooks/useAdminSubmission.js';
 import { saveSubmission } from '../services/dataService.js';
 import { email as validateEmail, maxLength, minLength, required, singaporePhone } from '../utils/validators.js';
-import { makeReference } from '../utils/formUtils.js';
+import { makeReference } from '../services/referenceService.js';
 
 const initialValues = { name: '', email: '', phone: '', subject: '', message: '' };
 const socialLinks = [

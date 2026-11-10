@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import fallbackPets from '../data/pets.json';
-import { getPetRecords } from '../services/petService.js';
+import { getPetRecords, publicStaffPet } from '../services/petService.js';
 import { isFirebaseConfigured } from '../services/firebaseClient.js';
 
 // Load the shared pet list from Firestore when ready and fall back to the bundled sample data.
@@ -23,5 +23,9 @@ export default function usePets() {
     };
   }, []);
 
-  return state;
+  function addPublishedPet(pet) {
+    setState((current) => ({ ...current, pets: [publicStaffPet(pet), ...current.pets.filter(({ id }) => id !== pet.id)] }));
+  }
+
+  return { ...state, addPublishedPet };
 }

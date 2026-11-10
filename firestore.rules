@@ -33,25 +33,257 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    function memberProfile(data, uid) {
-      return exactFields(data, [
+    function memberFields() {
+      return [
           'uid', 'memberId', 'firstName', 'fullName', 'phone', 'address',
           'roles', 'status', 'createdAt', 'ageConfirmed', 'dataConsent', 'newsletter'
-        ])
-        && data.uid == uid
-        && reference(data.memberId, 'PH')
+      ];
+    }
+
+    function shortMemberId(value) {
+      return value is string && value.matches('PH-[A-HJ-NP-Z2-9]{6}');
+    }
+
+    // Map accepted IDs and labels to the four distinct roles used by the app.
+    function memberRoleIds(selected) {
+      return (selected.hasAny(['adopter', 'Adopter']) ? ['adopter'] : [])
+        .concat(selected.hasAny(['volunteer', 'Volunteer']) ? ['volunteer'] : [])
+        .concat(selected.hasAny(['foster', 'Foster']) ? ['foster'] : [])
+        .concat(selected.hasAny(['donor', 'Donor']) ? ['donor'] : []);
+    }
+
+    function memberProfile(data, uid) {
+      return data.uid == uid
+        && (shortMemberId(data.memberId) || reference(data.memberId, 'PH'))
         && textField('firstName', 1, 120)
         && textField('fullName', 2, 120)
         && textField('phone', 8, 32)
         && textField('address', 8, 240)
         && data.roles is list
-        && data.roles.size() >= 1 && data.roles.size() <= 3
-        && data.roles.hasOnly(['volunteer', 'foster', 'donor'])
-        && data.roles.toSet().size() == data.roles.size()
+        && data.roles.size() >= 1 && data.roles.size() <= 4
+        && memberRoleIds(data.roles).size() == data.roles.size()
         && data.status == 'Active'
         && data.ageConfirmed == true && data.dataConsent == true
         && data.newsletter is bool
         && submittedAt(data.createdAt);
+    }
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function staffMetadata(data) {
+      return submittedAt(data.updatedAt)
+        && textField('updatedBy', 1, 254)
+        && data.updatedBy == request.auth.token.email;
+    }
+
+    function staffUpdate(statusKey, allowedStatuses) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      return isAdmin()
+        && changed.size() > 0
+        && changed.hasOnly([statusKey, 'updatedAt', 'updatedBy'])
+        && staffMetadata(data)
+        && (!changed.hasAny([statusKey]) || data[statusKey] in allowedStatuses);
+    }
+
+    function newRequestMetadata(data, kind, initialStatus) {
+      return data.referenceNo == data.referenceId
+        && data.type == kind
+        && data.status == initialStatus
+        && submittedAt(data.createdAt)
+        && data.updatedAt == data.createdAt
+        && data.updatedBy == '';
+    }
+
+    function boundedText(value, minimum, maximum) {
+      return value is string && value.size() >= minimum && value.size() <= maximum;
+    }
+
+    function volunteerAnswers(answers) {
+      return answers is map
+        && exactFields(answers, ['volunteerDays', 'volunteerHours', 'volunteerSkills'])
+        && answers.volunteerDays is list
+        && answers.volunteerDays.size() >= 1
+        && answers.volunteerDays.size() <= 7
+        && answers.volunteerDays.hasOnly([
+          'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+        ])
+        && answers.volunteerDays.toSet().size() == answers.volunteerDays.size()
+        && answers.volunteerHours is int
+        && answers.volunteerHours >= 1 && answers.volunteerHours <= 40
+        && boundedText(answers.volunteerSkills, 0, 500);
+    }
+
+    function fosterAnswers(answers) {
+      return answers is map
+        && exactFields(answers, [
+          'fosterHousingType', 'fosterOtherPets', 'fosterSpecies', 'fosterDuration', 'fosterSpace'
+        ])
+        && answers.fosterHousingType in ['HDB flat', 'Condominium', 'Landed house', 'Other']
+        && boundedText(answers.fosterOtherPets, 0, 300)
+        && answers.fosterSpecies in ['Cats', 'Dogs', 'Either']
+        && answers.fosterDuration in ['Under one month', '1 to 3 months', 'Over three months', 'Flexible']
+        && boundedText(answers.fosterSpace, 1, 500);
+    }
+
+    function donorAnswers(answers) {
+      return answers is map
+        && exactFields(answers, ['donorPledgeType', 'donorAmountRange', 'donorPetId'])
+        && answers.donorPledgeType in ['Monthly', 'One-off', 'In-kind']
+        && answers.donorAmountRange in [
+          'Under S$25', 'S$25 to S$49', 'S$50 to S$99', 'S$100 or more', 'Not sure yet'
+        ]
+        && boundedText(answers.donorPetId, 0, 256);
+    }
+
+    function validRoleDetails(data) {
+      let details = data.roleDetails;
+      let questionnaires = memberRoleIds(data.roles).removeAll(['adopter']);
+      return details is map && exactFields(details, questionnaires)
+        && (!('volunteer' in questionnaires) || volunteerAnswers(details.volunteer))
+        && (!('foster' in questionnaires) || fosterAnswers(details.foster))
+        && (!('donor' in questionnaires) || donorAnswers(details.donor));
+    }
+
+    function newMember(data, uid) {
+      return exactFields(data, memberFields().concat(['email', 'roleDetails', 'updatedAt']))
+        && memberProfile(data, uid)
+        && shortMemberId(data.memberId)
+        && emailField()
+        && data.email == request.auth.token.email
+        && validRoleDetails(data)
+        && data.updatedAt == data.createdAt;
+    }
+
+    match /admins/{uid} {
+      allow get: if signedInAs(uid);
+      allow list, write: if false;
+    }
+
+    function historyEntry(entry, data) {
+      return entry is map
+        && exactFields(entry, ['action', 'fromStatus', 'toStatus', 'outcome', 'note', 'at', 'by'])
+        && boundedText(entry.action, 1, 80)
+        && boundedText(entry.fromStatus, 1, 40)
+        && boundedText(entry.toStatus, 1, 40)
+        && entry.outcome in ['', 'Reached', 'No answer', 'Left voicemail', 'Wrong number']
+        && boundedText(entry.note, 0, 300)
+        && entry.at == data.updatedAt && entry.by == data.updatedBy;
+    }
+
+    function validStaffNote(data, priorHistory) {
+      let history = data.get('history', []);
+      return data.keys().hasAll(['updatedAt', 'updatedBy'])
+        && data.keys().hasOnly(['text', 'history', 'updatedAt', 'updatedBy'])
+        && data.keys().hasAny(['text', 'history'])
+        && (!('text' in data) || boundedText(data.text, 0, 1000))
+        && staffMetadata(data)
+        && history is list
+        && (history == priorHistory || (
+          history.size() == priorHistory.size() + 1
+          && history == priorHistory.concat([history[history.size() - 1]])
+          && historyEntry(history[history.size() - 1], data)
+        ));
+    }
+
+    match /admin_notes/{noteId} {
+      function supportedNote() {
+        return noteId.matches('(members|adoption_requests|release_requests|contact_messages|staff_pets)_.+');
+      }
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() && supportedNote() && validStaffNote(request.resource.data, []);
+      allow update: if isAdmin() && supportedNote()
+        && validStaffNote(request.resource.data, resource.data.get('history', []));
+      allow delete: if false;
+    }
+
+    function validAvailability(data) {
+      return data.keys().hasAll(['status', 'updatedAt', 'updatedBy'])
+        && data.keys().hasOnly(['status', 'adoptionRef', 'updatedAt', 'updatedBy'])
+        && data.status in ['Available', 'Reserved', 'Adopted']
+        && (!('adoptionRef' in data) || boundedText(data.adoptionRef, 0, 32))
+        && submittedAt(data.updatedAt)
+        && data.updatedBy == request.auth.uid;
+    }
+
+    match /pet_availability/{petId} {
+      allow get, list: if true;
+      allow create, update: if isAdmin() && validAvailability(request.resource.data);
+      allow delete: if false;
+    }
+
+    function petIsAvailable(petId) {
+      let availability = /databases/$(database)/documents/pet_availability/$(petId);
+      let staffPet = /databases/$(database)/documents/staff_pets/$(petId);
+      return (!exists(availability) || get(availability).data.status == 'Available')
+        && (!exists(staffPet) || get(staffPet).data.archived == false);
+    }
+
+
+    function validPetDataUrl(value) {
+      return boundedText(value, 24, 249999)
+        && value.matches('data:image/(jpeg|webp);base64,[A-Za-z0-9+/=]+');
+    }
+
+    function validPetCredit(credit) {
+      return credit is map && exactFields(credit, ['type', 'photographer', 'source', 'url'])
+        && ((credit.type == 'staff' && credit.photographer == '' && credit.source == '' && credit.url == '')
+          || (credit.type == 'stock' && boundedText(credit.photographer, 1, 120)
+            && boundedText(credit.source, 1, 120) && boundedText(credit.url, 1, 512)
+            && credit.url.matches('https?://[^\\s]+')));
+    }
+
+    function validStaffPet(data, petId) {
+      return exactFields(data, [
+          'id', 'name', 'species', 'breed', 'gender', 'ageYears', 'ageMonths', 'ageGroup', 'size', 'colour',
+          'vaccinated', 'sterilised', 'microchip', 'goodWithKids', 'goodWithPets', 'hdbFriendly',
+          'energyLevel', 'temperament', 'story', 'healthNotes', 'specialNeeds', 'image', 'imageAlt',
+          'photoCredit', 'source', 'archived', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.id == petId && petId.matches('[a-z0-9-]{1,48}-[a-z0-9]{4}')
+        && boundedText(data.name, 1, 80) && data.species in ['Dog', 'Cat']
+        && boundedText(data.breed, 1, 100) && data.gender in ['Female', 'Male']
+        && data.ageYears is int && data.ageYears >= 0 && data.ageYears <= 40
+        && data.ageMonths is int && data.ageMonths >= 0 && data.ageMonths <= 11
+        && data.ageGroup == (data.ageYears < 1 ? 'Baby' : data.ageYears < 2 ? 'Young' : data.ageYears < 8 ? 'Adult' : 'Senior')
+        && data.size in ['Small', 'Medium', 'Large'] && boundedText(data.colour, 1, 80)
+        && data.vaccinated is bool && data.sterilised is bool && data.microchip is bool
+        && data.goodWithKids is bool && data.goodWithPets is bool && data.hdbFriendly is bool
+        && data.energyLevel in ['Low', 'Moderate', 'High']
+        && data.temperament is list && data.temperament.size() <= 8
+        && data.temperament.hasOnly(['Affectionate', 'Calm', 'Curious', 'Friendly', 'Gentle', 'Independent', 'Playful', 'Shy'])
+        && data.temperament.toSet().size() == data.temperament.size()
+        && boundedText(data.story, 1, 600) && boundedText(data.healthNotes, 0, 600) && boundedText(data.specialNeeds, 0, 600)
+        && validPetDataUrl(data.image) && boundedText(data.imageAlt, 1, 160) && validPetCredit(data.photoCredit)
+        && data.source == 'staff' && data.archived is bool && boundedText(data.createdBy, 1, 128)
+        && submittedAt(data.createdAt) && submittedAt(data.updatedAt);
+    }
+
+    function validPetGallery(data) {
+      return exactFields(data, ['gallery', 'alts']) && data.gallery is list && data.alts is list
+        && data.gallery.size() == data.alts.size() && data.gallery.size() <= 2
+        && (data.gallery.size() < 1 || (validPetDataUrl(data.gallery[0]) && boundedText(data.alts[0], 1, 160)))
+        && (data.gallery.size() < 2 || (validPetDataUrl(data.gallery[1]) && boundedText(data.alts[1], 1, 160)));
+    }
+
+    match /staff_pets/{petId} {
+      allow get, list: if isAdmin() || resource.data.archived == false;
+      allow create: if isAdmin() && validStaffPet(request.resource.data, petId)
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.archived == false
+        && request.resource.data.updatedAt == request.resource.data.createdAt;
+      allow update: if isAdmin() && validStaffPet(request.resource.data, petId)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    match /pet_images/{petId} {
+      allow get: if true;
+      allow create, update: if isAdmin() && validPetGallery(request.resource.data);
+      allow list, delete: if false;
     }
 
     match /pets/{petId} {
@@ -60,12 +292,14 @@ service cloud.firestore {
     }
 
     match /members/{uid} {
-      allow get: if signedInAs(uid);
-      allow create: if signedInAs(uid) && memberProfile(request.resource.data, uid);
+      allow get: if signedInAs(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if signedInAs(uid) && newMember(request.resource.data, uid);
       allow update: if signedInAs(uid) && memberProfile(request.resource.data, uid)
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['firstName', 'fullName', 'phone', 'address', 'roles']);
-      allow list, delete: if false;
+      allow update: if staffUpdate('staffStatus', ['New', 'Contacted', 'Onboarded', 'Inactive']);
+      allow delete: if false;
     }
 
     match /adoption_requests/{requestId} {
@@ -74,10 +308,11 @@ service cloud.firestore {
           'referenceId', 'userId', 'memberId', 'applicantName', 'email', 'phone', 'petId', 'petName',
           'housingType', 'tenure', 'landlordPermission', 'householdMembers', 'otherPets',
           'experience', 'workSchedule', 'reason', 'commitmentLongTerm', 'commitmentFinancial',
-          'interviewConsent', 'preferredDate', 'preferredTime', 'status', 'createdAt'
+          'interviewConsent', 'preferredDate', 'preferredTime', 'status', 'createdAt',
+          'referenceNo', 'type', 'updatedAt', 'updatedBy'
         ])
         && reference(request.resource.data.referenceId, 'AD')
-        && reference(request.resource.data.memberId, 'PH')
+        && (shortMemberId(request.resource.data.memberId) || reference(request.resource.data.memberId, 'PH'))
         && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.memberId
           == request.resource.data.memberId
         && textField('applicantName', 1, 120)
@@ -85,6 +320,7 @@ service cloud.firestore {
         && request.resource.data.email == request.auth.token.email
         && textField('phone', 0, 32)
         && textField('petId', 1, 64)
+        && petIsAvailable(request.resource.data.petId)
         && textField('petName', 1, 100)
         && request.resource.data.housingType in ['HDB flat', 'Condominium', 'Landed home', 'Other']
         && ((request.resource.data.tenure == 'own' && request.resource.data.landlordPermission == null)
@@ -99,10 +335,12 @@ service cloud.firestore {
         && request.resource.data.interviewConsent == true
         && dateField('preferredDate')
         && request.resource.data.preferredTime in ['10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
-        && request.resource.data.status == 'Submitted'
-        && submittedAt(request.resource.data.createdAt);
-      allow get, list: if signedInAs(resource.data.userId);
-      allow update, delete: if false;
+        && newRequestMetadata(request.resource.data, 'adopt', 'Submitted');
+      allow get, list: if isAdmin() || signedInAs(resource.data.userId);
+      allow update: if staffUpdate('status', [
+        'New', 'Contacted', 'Interview scheduled', 'Approved', 'Completed', 'Declined'
+      ]);
+      allow delete: if false;
     }
 
     match /release_requests/{requestId} {
@@ -110,7 +348,8 @@ service cloud.firestore {
           'referenceId', 'ownerName', 'email', 'phone', 'petName', 'petSpecies', 'petBreed',
           'petAgeYears', 'petGender', 'petSize', 'petColour', 'vaccinated', 'sterilised',
           'microchip', 'healthNotes', 'behaviourNotes', 'reason', 'reasonDetails', 'handoverDate',
-          'photoFileName', 'photoFileType', 'photoFileSize', 'consent', 'createdAt'
+          'photoFileName', 'photoFileType', 'photoFileSize', 'consent', 'createdAt',
+          'referenceNo', 'type', 'status', 'updatedAt', 'updatedBy', 'urgent'
         ])
         && reference(request.resource.data.referenceId, 'RL')
         && textField('ownerName', 1, 120)
@@ -141,13 +380,17 @@ service cloud.firestore {
             && request.resource.data.photoFileSize == 0)
           || (request.resource.data.photoFileName != '' && request.resource.data.photoFileType.matches('(?i)image/.*')))
         && request.resource.data.consent == true
-        && submittedAt(request.resource.data.createdAt);
-      allow read, update, delete: if false;
+        && request.resource.data.urgent is bool
+        && newRequestMetadata(request.resource.data, 'release', 'New');
+      allow get, list: if isAdmin();
+      allow update: if staffUpdate('status', ['New', 'Contacted', 'Handover scheduled', 'Received', 'Closed']);
+      allow delete: if false;
     }
 
     match /contact_messages/{messageId} {
       allow create: if exactFields(request.resource.data, [
-          'referenceId', 'name', 'email', 'phone', 'subject', 'message', 'createdAt'
+          'referenceId', 'name', 'email', 'phone', 'subject', 'message', 'createdAt',
+          'referenceNo', 'type', 'status', 'updatedAt', 'updatedBy'
         ])
         && reference(request.resource.data.referenceId, 'CT')
         && textField('name', 1, 120)
@@ -155,8 +398,10 @@ service cloud.firestore {
         && textField('phone', 0, 32)
         && textField('subject', 1, 120)
         && textField('message', 1, 2000)
-        && submittedAt(request.resource.data.createdAt);
-      allow read, update, delete: if false;
+        && newRequestMetadata(request.resource.data, 'contact', 'New');
+      allow get, list: if isAdmin();
+      allow update: if staffUpdate('status', ['New', 'Replied', 'Closed']);
+      allow delete: if false;
     }
   }
 }

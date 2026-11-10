@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/layout/Layout.jsx';
 import ScrollToTop from './components/layout/ScrollToTop.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
+import AdminRoute from './components/auth/AdminRoute.jsx';
+import { AdminAuthProvider } from './context/AdminAuthContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import AdoptPage from './pages/AdoptPage.jsx';
@@ -19,6 +21,11 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import GetInvolvedPage from './pages/GetInvolvedPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import MemberPage from './pages/MemberPage.jsx';
+import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import { Spinner } from './components/ui/Spinner.jsx';
+
+const AdminHomePage = lazy(() => import('./pages/AdminHomePage.jsx'));
+const staffDashboard = <Suspense fallback={<Spinner label="Loading staff dashboard" />}><AdminHomePage /></Suspense>;
 
 const routeTitles = {
   '/': 'Home',
@@ -35,6 +42,8 @@ const routeTitles = {
   '/privacy': 'Privacy',
   '/terms': 'Terms',
   '/credits': 'Image credits',
+  '/admin/login': 'Staff login',
+  '/admin': 'Staff area',
 };
 
 // Keep the browser tab title in step with the page currently shown.
@@ -43,11 +52,20 @@ function RouteDocumentTitle() {
 
   useEffect(() => {
     const isPetDetail = pathname.startsWith('/pets/');
-    const pageTitle = isPetDetail ? 'Pet details' : routeTitles[pathname] ?? 'Page not found';
+    const pageTitle = isPetDetail ? 'Pet details' : routeTitles[pathname] ?? (pathname.startsWith('/admin/') ? 'Staff area' : 'Page not found');
     document.title = `${pageTitle} | Pet Heaven`;
   }, [pathname]);
 
   return null;
+}
+
+function AdminSection() {
+  return (
+    <AdminAuthProvider>
+      <meta name="robots" content="noindex, nofollow" />
+      <Outlet />
+    </AdminAuthProvider>
+  );
 }
 
 // Define the app's page routes inside one shared header, main area, and footer.
@@ -75,6 +93,13 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/credits" element={<CreditsPage />} />
+          <Route path="/admin" element={<AdminSection />}>
+            <Route path="login" element={<AdminLoginPage />} />
+            <Route element={<AdminRoute />}>
+              <Route index element={staffDashboard} />
+              <Route path="*" element={staffDashboard} />
+            </Route>
+          </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

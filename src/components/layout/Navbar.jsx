@@ -7,6 +7,7 @@ import Dropdown from '../ui/Dropdown.jsx';
 import SocialLinks from './SocialLinks.jsx';
 import Alert from '../ui/Alert.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useAdminAuth } from '../../context/AdminAuthContext.jsx';
 import { logout } from '../../services/authService.js';
 
 const navGroups = [
@@ -41,6 +42,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, member, loading } = useAuth();
+  const { isAdmin } = useAdminAuth({ publicCheck: openGroup === 'account' });
   const activeGroup = location.pathname === '/about'
     ? (location.hash === '#about-adoption-title' ? 'Adopt' : 'About')
     : ['/join', '/get-involved'].includes(location.pathname) || (location.pathname === '/' && location.hash === '#sponsor')
@@ -142,6 +144,7 @@ export default function Navbar() {
                   items={[
                     { label: 'My Membership', to: '/member' },
                     { label: 'My Requests', to: '/member#requests' },
+                    ...(isAdmin ? [{ label: 'Staff dashboard', to: '/admin' }] : []),
                     { label: 'Sign out', onSelect: signOut, disabled: signingOut },
                   ]}
                   label={<span className="nav-account__name">{member?.firstName ? `Hi, ${member.firstName}` : 'My account'}</span>}

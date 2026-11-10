@@ -83,20 +83,75 @@ export const mockFirestoreSdk = {
   }),
 };
 
+function adminSnapshot(query) {
+  const target = typeof query === 'string' ? { collection: query, constraints: [] } : query;
+  const prefix = target.collection + '/';
+  const ordered = target.constraints.some(({ type }) => type === 'orderBy');
+  const limit = target.constraints.find(({ type }) => type === 'limit')?.count;
+  return {
+    metadata: { fromCache: false },
+    docs: [...mockDocuments.entries()]
+      .filter(([path, data]) => path.startsWith(prefix) && (!ordered || Object.hasOwn(data, 'createdAt')))
+      .slice(0, limit)
+      .map(([path, data]) => ({ id: path.slice(prefix.length), data: () => data })),
+  };
+}
+
+function applyAdminWrite(path, data, merge) {
+  const current = merge ? mockDocuments.get(path) ?? {} : {};
+  const resolved = Object.fromEntries(Object.entries(data).map(([key, value]) => [
+    key, value?.kind === 'arrayUnion' ? [...(current[key] ?? []), ...value.values] : value,
+  ]));
+  mockDocuments.set(path, { ...current, ...resolved });
+}
+
+export const mockAdminTransactions = [];
+
+export const mockAdminFirestoreSdk = {
+  doc: vi.fn((_database, collection, id) => collection + '/' + id),
+  setDoc: vi.fn(async (path, data, options) => applyAdminWrite(path, data, options?.merge)),
+  arrayUnion: vi.fn((...values) => ({ kind: 'arrayUnion', values })),
+  runTransaction: vi.fn(async (_database, execute) => {
+    const writes = [];
+    const transaction = {
+      get: vi.fn(async (path) => ({ exists: () => mockDocuments.has(path), data: () => mockDocuments.get(path) })),
+      update: vi.fn((path, data) => { writes.push([path, data, true]); }),
+      set: vi.fn((path, data, options) => { writes.push([path, data, options?.merge]); }),
+    };
+    mockAdminTransactions.push(transaction);
+    const result = await execute(transaction);
+    for (const write of writes) applyAdminWrite(...write);
+    return result;
+  }),
+  collection: vi.fn((_database, name) => name),
+  orderBy: vi.fn((field, direction) => ({ type: 'orderBy', field, direction })),
+  limit: vi.fn((count) => ({ type: 'limit', count })),
+  query: vi.fn((collection, ...constraints) => ({ collection, constraints })),
+  onSnapshot: vi.fn((target, _options, next) => {
+    next(adminSnapshot(target));
+    return vi.fn();
+  }),
+  getDocsFromServer: vi.fn(async (target) => adminSnapshot(target)),
+};
+
 export const mockFirebaseClient = {
   isFirebaseConfigured: true,
   getFirestoreClient: vi.fn(async () => ({ firestore, firestoreSdk: mockFirestoreSdk })),
+  getAdminFirestoreClient: vi.fn(async () => ({ firestore, firestoreSdk: mockAdminFirestoreSdk })),
 };
 
 export function resetAccountMocks() {
   authListeners.clear();
   activeUser = null;
   mockDocuments.clear();
+  mockAdminTransactions.length = 0;
   for (const mock of Object.values(mockAuthService)) {
     if (typeof mock === 'function') mock.mockReset();
   }
   for (const mock of Object.values(mockFirestoreSdk)) mock.mockReset();
+  for (const mock of Object.values(mockAdminFirestoreSdk)) mock.mockReset();
   mockFirebaseClient.getFirestoreClient.mockReset();
+  mockFirebaseClient.getAdminFirestoreClient.mockReset();
 }
 
 export function seedSignedInMember() {

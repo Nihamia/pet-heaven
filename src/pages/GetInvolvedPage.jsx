@@ -12,7 +12,8 @@ const benefits = [
   { title: 'Your membership in one place', description: 'View your member card, update your details, and check your adoption requests.' },
 ];
 
-const questions = roles.flatMap((role) => role.faqs.map((faq, index) => ({ id: `${role.id}-${index}`, ...faq })));
+const supportRoles = roles.filter((role) => role.anchor);
+const questions = supportRoles.flatMap((role) => role.faqs.map((faq, index) => ({ id: `${role.id}-${index}`, ...faq })));
 
 export default function GetInvolvedPage() {
   return (
@@ -22,11 +23,11 @@ export default function GetInvolvedPage() {
         <section aria-labelledby="involved-intro">
           <SectionHeading description="There’s more than one way to help an animal find a safer place to land. Choose the roles that fit your time, home, and interests." eyebrow="Find your way to help" id="involved-intro" title="Small acts make room for hope." />
           <nav aria-label="Ways to help" className="get-involved-page__jump-links">
-            {roles.map((role) => <Button key={role.id} size="small" to={`/get-involved#${role.anchor}`} variant="outline">{role.title}</Button>)}
+            {supportRoles.map((role) => <Button key={role.id} size="small" to={`/get-involved#${role.anchor}`} variant="outline">{role.title}</Button>)}
           </nav>
         </section>
 
-        {roles.map((role) => (
+        {supportRoles.map((role) => (
           <Card aria-labelledby={`${role.anchor}-heading`} as="section" className="involved-role" id={role.anchor} key={role.id} padding="large">
             <div className="involved-role__header">
               <span aria-hidden="true" className="role-icon">{role.icon}</span>
@@ -40,6 +41,14 @@ export default function GetInvolvedPage() {
             <Button to={`/join?role=${role.id}`} variant="secondary">{role.applyLabel}</Button>
           </Card>
         ))}
+
+        <Card aria-labelledby="involved-adopt" as="section" className="get-involved-page__cta" padding="large">
+          <SectionHeading id="involved-adopt" title="Want to adopt?" description="Meet our available cats and dogs. Choose Adopter when you register to send an adoption request." />
+          <div className="get-involved-page__jump-links">
+            <Button to="/pets" variant="outline">Browse pets</Button>
+            <Button to="/join?role=adopter" variant="secondary">Join as an Adopter</Button>
+          </div>
+        </Card>
 
         <section aria-labelledby="involved-benefits">
           <SectionHeading eyebrow="Member benefits" id="involved-benefits" title="Resources for your next step" />

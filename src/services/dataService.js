@@ -1,10 +1,10 @@
 import { getFirestoreClient, isFirebaseConfigured } from './firebaseClient.js';
 
-const allowedCollections = new Set([
-  'adoption_requests',
-  'release_requests',
-  'contact_messages',
-]);
+const submissionTypes = {
+  adoption_requests: 'adopt',
+  release_requests: 'release',
+  contact_messages: 'contact',
+};
 
 function localStorageKey(collectionName) {
   return `pet-heaven-${collectionName}`;
@@ -66,9 +66,18 @@ export function saveBrowserRecord(collectionName, record, remoteResult = {}) {
 
 // Save a request to Firestore when available and keep a browser copy for offline use.
 export async function saveSubmission(collectionName, record) {
-  if (!allowedCollections.has(collectionName)) throw new Error('This submission type is not supported.');
+  if (!Object.hasOwn(submissionTypes, collectionName)) throw new Error('This submission type is not supported.');
 
-  const stampedRecord = { ...record, createdAt: new Date().toISOString() };
+  const createdAt = new Date().toISOString();
+  const stampedRecord = {
+    ...record,
+    referenceNo: record.referenceId,
+    type: submissionTypes[collectionName],
+    status: collectionName === 'adoption_requests' ? 'Submitted' : 'New',
+    createdAt,
+    updatedAt: createdAt,
+    updatedBy: '',
+  };
   let remoteResult;
   if (isFirebaseConfigured) {
     const remoteWrite = (async () => {
@@ -78,7 +87,10 @@ export async function saveSubmission(collectionName, record) {
     })().catch((error) => ({ saved: false, code: error?.code }));
     remoteResult = await waitForRemote(remoteWrite);
     if (collectionName === 'adoption_requests' && ['permission-denied', 'unauthenticated'].includes(remoteResult.code)) {
-      throw new Error('Firestore could not accept this request for your account. Check that you are signed in and try again.');
+      throw Object.assign(
+        new Error('Firestore could not accept this request for your account. Check that you are signed in and try again.'),
+        { code: remoteResult.code },
+      );
     }
   }
   return saveBrowserRecord(collectionName, stampedRecord, remoteResult);

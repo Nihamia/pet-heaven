@@ -10,6 +10,17 @@ const forms = {
 
 const htmlEntities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const sendSpacingMs = 1100;
+const singaporeTime = new Intl.DateTimeFormat('en-SG', {
+  dateStyle: 'medium',
+  timeStyle: 'medium',
+  hourCycle: 'h23',
+  timeZone: 'Asia/Singapore',
+});
+
+function formatSubmittedAt(value) {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime()) ? singaporeTime.format(date) + ' SGT' : '';
+}
 let deliveryQueue = Promise.resolve();
 let nextSendAt = 0;
 
@@ -66,7 +77,7 @@ async function deliverFormEmails({ formType, data, reference }) {
       reply_to: email,
       form_type: form.title,
       reference_no: reference,
-      submitted_at: data.submittedAt,
+      submitted_at: formatSubmittedAt(data.submittedAt),
       priority: formType === 'release' && data.urgent === true ? 'URGENT' : 'Normal',
       details_html: renderDetails(content.adminRows),
     }, publicKey);

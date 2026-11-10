@@ -80,13 +80,13 @@ export default function JoinPage() {
       roles: selectedRoleIds(values),
       dataConsent: values.dataConsent,
       newsletter: values.newsletter,
+      roleDetails: collectRoleAnswers(values, pets),
     };
     const { member: registeredMember, saved } = await registerMember(account, profile);
     if (!saved.alreadyRegistered) {
       const feedback = await deliver(saved, {
         ...profile,
         email: account.email,
-        roleDetails: collectRoleAnswers(values, pets),
       }, registeredMember.memberId);
       setRegistrationFeedback(feedback, account.uid);
     }
@@ -112,7 +112,7 @@ export default function JoinPage() {
   return (
     <FormPageShell
       className="join-page"
-      description="Become part of a caring community. Choose the ways you would like to help, and we will keep the next steps clear and personal."
+      description="Become part of a caring community. Join to adopt a pet or support the society in other ways."
       eyebrow="Join the community"
       title="A little support can change a whole story."
     >
@@ -142,7 +142,7 @@ export default function JoinPage() {
 
             <fieldset aria-describedby={form.errors.interests ? 'join-interests-error' : undefined} className="service-fieldset" disabled={form.isSubmitting} id="support-interests">
               <legend>How would you like to help?</legend>
-              <p className="service-fieldset__hint">Choose one or more roles and answer the questions for each.</p>
+              <p className="service-fieldset__hint">Choose one or more. Only want to adopt? Choose Adopter.</p>
               <div className="join-role-cards">
                 {roles.map((role) => <RoleCard fieldError={fieldError} key={role.id} onBlur={form.handleBlur} onChange={form.handleChange} pets={pets} role={role} values={form.values} />)}
               </div>
@@ -161,7 +161,7 @@ export default function JoinPage() {
           title="More hands, more hope."
           steps={[
             { title: 'Open your member area', text: 'Find your membership card, care guides, and adoption requests.' },
-            { title: 'Choose a way to help', text: 'Your interests help the team understand the support you would like to offer.' },
+            { title: 'Choose your interests', text: 'Choose Adopter to adopt a pet, or select other roles that suit you.' },
             { title: 'Stay in touch', text: 'The team can discuss suitable opportunities using the contact details you share.' },
           ]}
         >
